@@ -1,6 +1,26 @@
 add_subdirectory(generators)
 add_subdirectory(converters)
 
+
+
+add_library(common_execution
+    execution/impl/common_executor.cpp
+    )
+
+target_link_libraries(common_execution
+    ametsuchi
+    common
+    )
+
+add_library(command_execution
+    execution/impl/command_executor.cpp
+    execution/impl/command_executor_factory.cpp
+    )
+target_link_libraries(command_execution
+    common_execution
+    )
+
+
 add_library(model
     model_crypto_provider_impl.cpp
     model_hash_provider_impl.cpp
@@ -13,6 +33,7 @@ target_link_libraries(model
     rxcpp
     logger
     iroha_amount
+    common_execution
     )
 
 
@@ -22,12 +43,4 @@ target_include_directories(model_registrations INTERFACE
     )
 target_link_libraries(model_registrations INTERFACE
     model
-    )
-
-add_library(command_execution
-    execution/impl/command_executor.cpp
-    execution/impl/command_executor_factory.cpp
-    )
-target_link_libraries(command_execution
-    ametsuchi
     )
