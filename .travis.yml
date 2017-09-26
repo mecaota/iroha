@@ -35,15 +35,15 @@ matrix:
     #     - CXX=g++
 
     - os: osx
-      osx_image: xcode8
       compiler: clang
       env:
-        - CC=clang
-        - CXX=clang++
+        - COMPILERCC=clang
+        - COMPILERCXX=clang++
 
 
 
 script:
+  - export CC=$COMPILERCC; export CXX=COMPIERCXX
   - cmake --version
   - cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release
   - cmake -Bbuild
