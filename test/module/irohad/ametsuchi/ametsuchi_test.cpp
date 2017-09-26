@@ -428,3 +428,81 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
   blocks->getAccountAssetTransactions(user3id, asset2id).subscribe(
       [](auto tx) { EXPECT_EQ(tx.commands.size(), 1); });
 }
+
+TEST_F(AmetsuchiTest, GetAccountTransactionsWithPagerTest) {
+  HashProviderImpl hashProvider;
+
+  auto storage =
+    StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
+  ASSERT_TRUE(storage);
+  auto wsv = storage->getWsvQuery();
+  auto blocks = storage->getBlockQuery();
+
+  const std::string domain1name = "domain1";
+  const std::string domain2name = "domain2";
+  const std::string user1name = "alice";
+  const std::string user2name = "bob";
+  const std::string user3name = "charlie";
+  const std::string user4name = "eve";
+  const std::string user1id = "alice@domain1";
+  const std::string user2id = "bob@domain1";
+  const std::string user3id = "charlie@domain1";
+  const std::string user4id = "eve@domain2";
+
+  auto assign_dummy_tx_info = [&hashProvider](Transaction &txn) {
+    txn.created_ts = 0;
+    txn.creator_account_id = "";
+    txn.tx_counter = 1;
+    txn.tx_hash = hashProvider.get_hash(txn);
+  };
+
+  auto assign_dummy_block_info = [&hashProvider](Block &block, iroha::hash256_t prev_hash) {
+    block.created_ts = 0;
+    block.height = 1;
+    block.prev_hash.fill(0);
+    block.merkle_root.fill(0);
+    block.txs_number = static_cast<uint16_t>(block.transactions.size());
+    hashProvider.get_hash(block);
+  };
+
+  {
+    Block block;
+    {
+      Transaction txn;
+      txn.commands = {
+        std::make_shared<CreateDomain>(domain1name),
+        std::make_shared<CreateAccount>(user1name, domain1name, iroha::ed25519::pubkey_t{}),
+        std::make_shared<CreateAccount>(user2name, domain1name, iroha::ed25519::pubkey_t{})
+      };
+      assign_dummy_tx_info(txn);
+      block.transactions.push_back(txn);
+    }
+    {
+      Transaction txn;
+      txn.commands = {
+        std::make_shared<CreateAccount>(user3name, domain1name, iroha::ed25519::pubkey_t{})
+      };
+      assign_dummy_tx_info(txn);
+      block.transactions.push_back(txn);
+    }
+    {
+      Transaction txn;
+      txn.commands = {
+        std::make_shared<CreateAccount>(user4name, domain2name, iroha::ed25519::pubkey_t{})
+      };
+      assign_dummy_tx_info(txn);
+      block.transactions.push_back(txn);
+    }
+    assign_dummy_block_info(block, iroha::hash256_t{});
+
+    auto ms = storage->createMutableStorage();
+    ms->apply(block, [](const auto &blk, auto &query, const auto &top_hash) {
+      return true;
+    });
+    storage->commit(std::move(ms));
+  }
+
+  auto account1 = wsv->getAccount(user1id);
+  ASSERT_TRUE(account1);
+  ASSERT_STREQ((user1name + "@" + domain1name).c_str(), account1->account_id.c_str());
+}
