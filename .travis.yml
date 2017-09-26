@@ -47,5 +47,4 @@ script:
   - cmake --version
   - cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release
   - cmake -Bbuild
-  - cmake -Bbuild --target test
 
