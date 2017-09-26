@@ -36,8 +36,8 @@ before_install:
 
 script:
   - cmake --version
-  - cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release
-  - cmake -Bbuild
+  - cmake -H. -B build -DCMAKE_BUILD_TYPE=Release
+  - cmake -B build
 
 # after_success:
 #   - mkdir coverage
