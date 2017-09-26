@@ -46,6 +46,6 @@ matrix:
 script:
   - cmake --version
   - cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release
-  - cmake -Bbuild -- -j$(nproc --all)
+  - cmake -Bbuild
   - cmake -Bbuild --target test
 
