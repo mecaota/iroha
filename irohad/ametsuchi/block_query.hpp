@@ -23,6 +23,7 @@
 #include <model/block.hpp>
 #include <model/transaction.hpp>
 #include <rxcpp/rx-observable.hpp>
+#include <common/types.hpp>
 
 namespace iroha {
   namespace ametsuchi {
@@ -50,27 +51,52 @@ namespace iroha {
           std::string account_id, std::string asset_id) = 0;
 
       /**
-      * Get given number of blocks starting with given height.
-      * @param height - starting height
-      * @param count - number of blocks to retrieve
-      * @return observable of Model Block
-      */
+       * Get all transactions of an account with pagination.
+       * @param account_id - account_id (accountName@domainName)
+       * @param tx_hash - take txs until tx_hash
+       * @param limit - max size of txs to take
+       * @return observable of Model Transaction
+       */
+      virtual rxcpp::observable<model::Transaction>
+      getAccountTransactionsWithPager(std::string account_id,
+                                      iroha::hash256_t tx_hash, size_t limit) = 0;
+
+      /**
+       * Get asset transactions of an account with pagination.
+       * @param account_id - account_id (accountName@domainName)
+       * @param asset_id - asset_id (assetName#domainName)
+       * @param tx_hash - take txs until tx_hash
+       * @param limit - max size of txs to take
+       * @return observable of Model Transaction
+       */
+      virtual rxcpp::observable<model::Transaction>
+      getAccountAssetTransactionsWithPager(std::string account_id,
+                                           std::string asset_id,
+                                           iroha::hash256_t tx_hash,
+                                           size_t limit) = 0;
+
+      /**
+       * Get given number of blocks starting with given height.
+       * @param height - starting height
+       * @param count - number of blocks to retrieve
+       * @return observable of Model Block
+       */
       virtual rxcpp::observable<model::Block> getBlocks(uint32_t height,
                                                         uint32_t count) = 0;
 
       /**
-      * Get all blocks starting from given height.
-      * @param from - starting height
-      * @return observable of Model Block
-      */
+       * Get all blocks starting from given height.
+       * @param from - starting height
+       * @return observable of Model Block
+       */
       virtual rxcpp::observable<model::Block> getBlocksFrom(
           uint32_t height) = 0;
 
       /**
-      * Get given number of blocks from top.
-      * @param count - number of blocks to retrieve
-      * @return observable of Model Block
-      */
+       * Get given number of blocks from top.
+       * @param count - number of blocks to retrieve
+       * @return observable of Model Block
+       */
       virtual rxcpp::observable<model::Block> getTopBlocks(uint32_t count) = 0;
     };
   }  // namespace ametsuchi

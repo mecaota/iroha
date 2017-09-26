@@ -17,8 +17,8 @@
 
 #include "ametsuchi/impl/flat_file_block_query.hpp"
 
-#include "model/converters/json_common.hpp"
 #include "model/commands/transfer_asset.hpp"
+#include "model/converters/json_common.hpp"
 
 namespace iroha {
   namespace ametsuchi {
@@ -34,6 +34,16 @@ namespace iroha {
           .filter([account_id](auto tx) {
             return tx.creator_account_id == account_id;
           });
+    }
+
+    rxcpp::observable<model::Transaction>
+    FlatFileBlockQuery::getAccountTransactionsWithPager(std::string account_id,
+                                                       iroha::hash256_t tx_hash,
+                                                       size_t limit) {
+      return getAccountTransactions(account_id)
+          .take_while([&tx_hash](auto tx) { return tx.tx_hash != tx_hash; })
+          .take_last(limit);  // TODO: size check
+      // TODO: reverse
     }
 
     rxcpp::observable<model::Block> FlatFileBlockQuery::getBlocks(
@@ -101,6 +111,16 @@ namespace iroha {
                   return false;
                 });
           });
+    }
+
+    rxcpp::observable<model::Transaction>
+    FlatFileBlockQuery::getAccountAssetTransactionsWithPager(
+        std::string account_id, std::string asset_id, iroha::hash256_t tx_hash,
+        size_t limit) {
+      return getAccountAssetTransactions(account_id, asset_id)
+          .take_while([&tx_hash](auto tx) { return tx.tx_hash != tx_hash; })
+          .take_last(limit);  // TODO: size check
+      // TODO: reverse
     }
   }  // namespace ametsuchi
 }  // namespace iroha
