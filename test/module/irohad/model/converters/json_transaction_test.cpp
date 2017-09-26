@@ -54,7 +54,7 @@ TEST_F(JsonTransactionTest, InvalidWhenFieldsMissing){
 }
 
 TEST_F(JsonTransactionTest, InvalidWhenNegativeAddAssetQuantity) {
-  auto transaction_string = R"({
+auto transaction_string = R"({
     "signatures": [
         {
             "pubkey": "f24325aa9b91526a83e722e19fa2a3ad7f3966abe066a9302b5d2092fe960254",
@@ -69,7 +69,7 @@ TEST_F(JsonTransactionTest, InvalidWhenNegativeAddAssetQuantity) {
             "command_type": "CreateAsset",
             "asset_name": "usd",
             "domain_id": "test",
-            "precision": "2"
+            "precision": 2
         },
         {
             "command_type": "AddAssetQuantity",
@@ -89,4 +89,43 @@ TEST_F(JsonTransactionTest, InvalidWhenNegativeAddAssetQuantity) {
   auto transaction = factory.deserialize(json.value());
 
   ASSERT_FALSE(transaction.has_value());
+}
+
+
+TEST_F(JsonTransactionTest, ValidWhenAddAssetQuantityFromRawJSON) {
+auto transaction_string = R"({
+    "signatures": [
+        {
+            "pubkey": "f24325aa9b91526a83e722e19fa2a3ad7f3966abe066a9302b5d2092fe960254",
+            "signature": "4563f8de6ee45e44b462a7027d1640376dece03eaf1091f8e69cdc9531957b178f00667e9241ba2d09f49b7861419b89af4986eb4d332e9d7efb31bb1105890e"
+        }
+    ],
+    "created_ts": 1503845603221,
+    "creator_account_id": "admin@test",
+    "tx_counter": 1,
+    "commands": [
+        {
+            "command_type": "CreateAsset",
+            "asset_name": "usd",
+            "domain_id": "test",
+            "precision": 2
+        },
+        {
+            "command_type": "AddAssetQuantity",
+            "account_id": "admin@test",
+            "asset_id": "usd#test",
+            "amount": {
+                "int_part": 20,
+                "frac_part": 0
+            }
+        }
+    ]
+  })";
+  auto json = stringToJson(transaction_string);
+
+  ASSERT_TRUE(json.has_value());
+
+  auto transaction = factory.deserialize(json.value());
+
+  ASSERT_TRUE(transaction.has_value());
 }
