@@ -5,34 +5,34 @@ language: cpp
 
 matrix:
   include:
-    # - os: linux
-    #   compiler: gcc
-    #   addons:
-    #     apt:
-    #       sources: ['ubuntu-toolchain-r-test']
-    #       packages: ['gcc-5', 'g++-5']
-    #   env:
-    #     - CC=gcc-5
-    #     - CXX=g++-5
+#     - os: linux
+#       compiler: gcc
+#       addons:
+#         apt:
+#           sources: ['ubuntu-toolchain-r-test']
+#           packages: ['gcc-5', 'g++-5']
+#       env:
+#         - CC=gcc-5
+#         - CXX=g++-5
 
-    # - os: linux
-    #   dist: trusty
-    #   compiler: clang
-    #   addons:
-    #     apt:
-    #       sources: ['llvm-toolchain-trusty-4.0']
-    #       packages: ['clang-4.0']
-    #   env:
-    #     - CC=clang-4.0
-    #     - CXX=clang++-4.0
+     - os: linux
+       dist: trusty
+       compiler: clang
+       addons:
+         apt:
+           sources: ['llvm-toolchain-trusty-4.0']
+           packages: ['clang-4.0']
+       env:
+         - CC=clang-4.0
+         - CXX=clang++-4.0
 
 
-    # - os: osx
-    #   osx_image: xcode8
-    #   compiler: gcc
-    #   env:
-    #     - CC=gcc
-    #     - CXX=g++
+     - os: osx
+       osx_image: xcode8
+       compiler: gcc
+       env:
+         - CC=gcc
+         - CXX=g++
 
     - os: osx
       compiler: clang
