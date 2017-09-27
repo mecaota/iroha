@@ -23,10 +23,12 @@
 #include "model/commands/create_asset.hpp"
 #include "model/commands/create_domain.hpp"
 #include "model/commands/remove_signatory.hpp"
-#include "model/commands/set_permissions.hpp"
 #include "model/commands/set_quorum.hpp"
 #include "model/commands/subtract_asset_quantity.hpp"
 #include "model/commands/transfer_asset.hpp"
+#include "model/commands/create_role.hpp"
+#include "model/commands/append_role.hpp"
+#include "model/permissions.hpp"
 
 using namespace generator;
 
@@ -66,15 +68,14 @@ namespace iroha {
         return generateCommand<CreateAsset>(asset_name, domain_name, precision);
       }
 
-      std::shared_ptr<Command> CommandGenerator::generateSetAdminPermissions(
-          const std::string &account_id) {
-        Account::Permissions permissions;
-        permissions.read_all_accounts = true;
-        permissions.set_permissions = true;
-        permissions.issue_assets = true;
-        permissions.can_transfer = true;
-        return generateCommand<SetAccountPermissions>(account_id, permissions);
+      std::shared_ptr<Command> CommandGenerator::generateCreateAdminRole(std::string role_name) {
+        std::vector<std::string> perms = {
+            can_create_domain,  can_add_signatory,  can_remove_signatory,
+            can_set_quorum,     can_get_my_account, can_get_my_signatories,
+            can_get_my_acc_ast, can_get_my_acc_txs};
+        return std::make_shared<CreateRole>(role_name, perms);
       }
+    
 
       std::shared_ptr<Command> CommandGenerator::generateAddAssetQuantity(
           const std::string &account_id, const std::string &asset_id, const Amount &amount) {
@@ -85,11 +86,7 @@ namespace iroha {
           const std::string &account_id, uint32_t quorum) {
         return generateCommand<SetQuorum>(account_id, quorum);
       }
-
-      std::shared_ptr<Command> CommandGenerator::generateSetPermissions(
-          const std::string &account_id, const Account::Permissions &permissions) {
-        return generateCommand<SetAccountPermissions>(account_id, permissions);
-      }
+    
 
       std::shared_ptr<Command> CommandGenerator::generateSubtractAssetQuantity(
           const std::string &account_id, const std::string &asset_id, const Amount &amount) {

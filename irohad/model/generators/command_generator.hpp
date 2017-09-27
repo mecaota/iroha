@@ -52,25 +52,12 @@ namespace iroha {
         std::shared_ptr<Command> generateCommand(ParamTypes... args) {
           return std::make_shared<Type>(args...);
         }
-
-        /**
-         * Generate default admin permissions
-         * Admin Permissions:
-         * - read_all_accounts
-         * - set permissions to other account
-         * - issue assets
-         * - can transfer money
-         * @param account_id
-         * @return
-         */
-        std::shared_ptr<Command> generateSetAdminPermissions(
-            const std::string &account_id);
-
+        
+        
+        std::shared_ptr<Command> generateCreateAdminRole(std::string role_name);
+        
         std::shared_ptr<Command> generateSetQuorum(const std::string &account_id,
                                                    uint32_t quorum);
-
-        std::shared_ptr<Command> generateSetPermissions(
-            const std::string &account_id, const Account::Permissions &permissions);
 
         std::shared_ptr<Command> generateAddAssetQuantity(
             const std::string &account_id, const std::string &asset_id, const Amount &amount);

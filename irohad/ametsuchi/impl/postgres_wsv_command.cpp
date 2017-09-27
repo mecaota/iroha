@@ -57,17 +57,6 @@ namespace iroha {
     };
 
     bool PostgresWsvCommand::insertAccount(const model::Account &account) {
-      std::stringstream permissions;
-      permissions << account.permissions.add_signatory
-                  << account.permissions.can_transfer
-                  << account.permissions.create_accounts
-                  << account.permissions.create_assets
-                  << account.permissions.create_domains
-                  << account.permissions.issue_assets
-                  << account.permissions.read_all_accounts
-                  << account.permissions.remove_signatory
-                  << account.permissions.set_permissions
-                  << account.permissions.set_quorum;
       try {
         transaction_.exec(
             "INSERT INTO account(\n"
@@ -82,7 +71,8 @@ namespace iroha {
             /*account.transaction_count*/ transaction_.quote(0) +
             ", \n"
             "            " +
-            transaction_.quote(permissions.str()) + ");");
+                // TODO: remove it
+            transaction_.quote("") + ");");
       } catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
         return false;
@@ -236,17 +226,6 @@ namespace iroha {
     }
 
     bool PostgresWsvCommand::updateAccount(const model::Account &account) {
-      std::stringstream permissions;
-      permissions << account.permissions.add_signatory
-                  << account.permissions.can_transfer
-                  << account.permissions.create_accounts
-                  << account.permissions.create_assets
-                  << account.permissions.create_domains
-                  << account.permissions.issue_assets
-                  << account.permissions.read_all_accounts
-                  << account.permissions.remove_signatory
-                  << account.permissions.set_permissions
-                  << account.permissions.set_quorum;
       try {
         transaction_.exec(
             "UPDATE account\n"
@@ -254,7 +233,8 @@ namespace iroha {
             transaction_.quote(account.quorum) + ", status=" +
             /*account.status*/ transaction_.quote(0) + ", transaction_count=" +
             /*account.transaction_count*/ transaction_.quote(0) +
-            ", permissions=" + transaction_.quote(permissions.str()) +
+                // TODO: remove this
+            ", permissions=" + transaction_.quote("") +
             "\n"
             " WHERE account_id=" +
             transaction_.quote(account.account_id) + ";");

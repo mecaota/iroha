@@ -17,6 +17,8 @@
 
 #include "model/generators/transaction_generator.hpp"
 
+#include "model/commands/append_role.hpp"
+
 namespace iroha {
   namespace model {
     namespace generators {
@@ -50,9 +52,11 @@ namespace iroha {
         auto precision = 2;
         tx.commands.push_back(
             command_generator.generateCreateAsset("coin", "test", precision));
-        // Add admin rights
+        // Create admin role
         tx.commands.push_back(
-            command_generator.generateSetAdminPermissions("admin@test"));
+            command_generator.generateCreateAdminRole("admin"));
+        tx.commands.push_back(
+            std::make_shared<AppendRole>("admin@test", "admin"));
 
         tx.tx_hash = hash_provider_.get_hash(tx);
         return tx;

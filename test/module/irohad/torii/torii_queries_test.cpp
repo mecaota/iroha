@@ -22,7 +22,7 @@ limitations under the License.
 #include "model/converters/pb_common.hpp"
 
 #include "main/server_runner.hpp"
-#include "torii/command_service.hpp"
+#include "model/permissions.hpp"
 #include "torii/processor/query_processor_impl.hpp"
 #include "torii/processor/transaction_processor_impl.hpp"
 #include "torii_utils/query_client.hpp"
@@ -42,6 +42,7 @@ using ::testing::AtLeast;
 using namespace iroha::network;
 using namespace iroha::validation;
 using namespace iroha::ametsuchi;
+using namespace iroha::model;
 
 class ToriiServiceTest : public testing::Test {
  public:
@@ -135,18 +136,24 @@ TEST_F(ToriiServiceTest, FindWhenResponseInvalid) {
  * Tests for account response
  */
 
-TEST_F(ToriiServiceTest, FindAccountWhenStatefulInvalid) {
+TEST_F(ToriiServiceTest, FindAccountWhenNoGrantPermissions) {
   EXPECT_CALL(*statelessValidatorMock,
               validate(A<std::shared_ptr<const iroha::model::Query>>()))
       .WillOnce(Return(true));
 
   iroha::model::Account account;
   account.account_id = "accountB";
+  auto creator = "accountA";
+
+  // TODO: refactor this to use stateful validation mocks
+  EXPECT_CALL(*wsv_query, hasAccountGrantablePermission(
+                              creator, account.account_id, can_get_my_account))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*wsv_query, getAccountRoles(creator))
+      .WillOnce(Return(nonstd::nullopt));
 
   EXPECT_CALL(*wsv_query, getAccount("accountB"))
       .Times(0);  // won't be called since stateful validation should fail
-  EXPECT_CALL(*wsv_query, getAccount("accountA"))
-      .Times(1);  // supposed to be called once when
 
   iroha::protocol::QueryResponse response;
 
@@ -167,16 +174,15 @@ TEST_F(ToriiServiceTest, FindAccountWhenHasReadPermissions) {
               validate(A<std::shared_ptr<const iroha::model::Query>>()))
       .WillOnce(Return(true));
 
-  iroha::model::Account accountA;
-  accountA.account_id = "accountA";
-  accountA.permissions.read_all_accounts = true;
-
-  // Should be called once, when stateful validation will be in progress
-  EXPECT_CALL(*wsv_query, getAccount(accountA.account_id))
-      .WillOnce(Return(accountA));
+  auto creator = "accountA";
 
   iroha::model::Account accountB;
   accountB.account_id = "accountB";
+
+  // TODO: refactor this to use stateful validation mocks
+  EXPECT_CALL(*wsv_query, hasAccountGrantablePermission(
+      creator, accountB.account_id, can_get_my_account))
+      .WillOnce(Return(true));
 
   // Should be called once, after successful stateful validation
   EXPECT_CALL(*wsv_query, getAccount(accountB.account_id))
@@ -195,7 +201,7 @@ TEST_F(ToriiServiceTest, FindAccountWhenHasReadPermissions) {
   ASSERT_EQ(response.account_response().account().account_id(), "accountB");
 }
 
-TEST_F(ToriiServiceTest, FindAccountWhenValid) {
+TEST_F(ToriiServiceTest, FindAccountWhenHasRolePermission) {
   EXPECT_CALL(*statelessValidatorMock,
               validate(A<std::shared_ptr<const iroha::model::Query>>()))
       .WillOnce(Return(true));
@@ -205,8 +211,15 @@ TEST_F(ToriiServiceTest, FindAccountWhenValid) {
 
   // Should be called once when stateful validation is in progress
   EXPECT_CALL(*wsv_query, getAccount("accountA"))
-      .Times(2)
-      .WillRepeatedly(Return(account));
+      .WillOnce(Return(account));
+  // TODO: refactor this to use stateful validation mocks
+  auto creator =  "accountA";
+  std::vector<std::string> roles = {"test"};
+  EXPECT_CALL(*wsv_query, getAccountRoles(creator))
+      .WillOnce(Return(roles));
+  std::vector<std::string> perm = {can_get_my_account};
+  EXPECT_CALL(*wsv_query, getRolePermissions("test"))
+      .WillOnce(Return(perm));
 
   iroha::protocol::QueryResponse response;
 
@@ -225,7 +238,7 @@ TEST_F(ToriiServiceTest, FindAccountWhenValid) {
  * Test for account asset response
  */
 
-TEST_F(ToriiServiceTest, FindAccountAssetWhenStatefulInvalid) {
+TEST_F(ToriiServiceTest, FindAccountAssetWhenNoGrantPermissions) {
   EXPECT_CALL(*statelessValidatorMock,
               validate(A<std::shared_ptr<const iroha::model::Query>>()))
       .WillOnce(Return(true));
@@ -244,7 +257,15 @@ TEST_F(ToriiServiceTest, FindAccountAssetWhenStatefulInvalid) {
   asset.domain_id = "USA";
   asset.precision = 2;
 
-  EXPECT_CALL(*wsv_query, getAccount("accountA")).WillOnce(Return(account));
+  auto creator = "accountA";
+
+  // TODO: refactor this to use stateful validation mocks
+  EXPECT_CALL(*wsv_query, hasAccountGrantablePermission(
+      creator, account.account_id, can_get_my_acc_ast))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*wsv_query, getAccountRoles(creator))
+      .WillOnce(Return(nonstd::nullopt));
+
   EXPECT_CALL(*wsv_query, getAccountAsset(_, _))
       .Times(0);  // won't be called due to failed stateful validation
 
@@ -263,7 +284,7 @@ TEST_F(ToriiServiceTest, FindAccountAssetWhenStatefulInvalid) {
             iroha::model::ErrorResponse::STATEFUL_INVALID);
 }
 
-TEST_F(ToriiServiceTest, FindAccountAssetWhenValid) {
+TEST_F(ToriiServiceTest, FindAccountAssetWhenHasRolePermissions) {
   EXPECT_CALL(*statelessValidatorMock,
               validate(A<std::shared_ptr<const iroha::model::Query>>()))
       .WillOnce(Return(true));
@@ -282,7 +303,14 @@ TEST_F(ToriiServiceTest, FindAccountAssetWhenValid) {
   asset.domain_id = "USA";
   asset.precision = 2;
 
-  EXPECT_CALL(*wsv_query, getAccount("accountA")).WillOnce(Return(account));
+  // TODO: refactor this to use stateful validation mocks
+  auto creator =  "accountA";
+  std::vector<std::string> roles = {"test"};
+  EXPECT_CALL(*wsv_query, getAccountRoles(creator))
+      .WillOnce(Return(roles));
+  std::vector<std::string> perm = {can_get_my_acc_ast};
+  EXPECT_CALL(*wsv_query, getRolePermissions("test"))
+      .WillOnce(Return(perm));
   EXPECT_CALL(*wsv_query, getAccountAsset(_, _))
       .WillOnce(Return(account_asset));
 
@@ -312,7 +340,7 @@ TEST_F(ToriiServiceTest, FindAccountAssetWhenValid) {
  * Test for signatories response
  */
 
-TEST_F(ToriiServiceTest, FindSignatoriesWhenStatefulInvalid) {
+TEST_F(ToriiServiceTest, FindSignatoriesWhenNoGrantPermissions) {
   EXPECT_CALL(*statelessValidatorMock,
               validate(A<std::shared_ptr<const iroha::model::Query>>()))
       .WillOnce(Return(true));
@@ -325,7 +353,13 @@ TEST_F(ToriiServiceTest, FindSignatoriesWhenStatefulInvalid) {
   std::vector<iroha::ed25519::pubkey_t> keys;
   keys.push_back(pubkey);
 
-  EXPECT_CALL(*wsv_query, getAccount("accountA")).WillOnce(Return(account));
+  // TODO: refactor this to use stateful validation mocks
+  auto creator =  "accountA";
+  EXPECT_CALL(*wsv_query, hasAccountGrantablePermission(
+      creator, account.account_id, can_get_my_signatories))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*wsv_query, getAccountRoles(creator))
+      .WillOnce(Return(nonstd::nullopt));
   EXPECT_CALL(*wsv_query, getSignatories(_)).Times(0);
 
   iroha::protocol::QueryResponse response;
@@ -342,7 +376,7 @@ TEST_F(ToriiServiceTest, FindSignatoriesWhenStatefulInvalid) {
             iroha::model::ErrorResponse::STATEFUL_INVALID);
 }
 
-TEST_F(ToriiServiceTest, FindSignatoriesWhenValid) {
+TEST_F(ToriiServiceTest, FindSignatoriesHasRolePermissions) {
   EXPECT_CALL(*statelessValidatorMock,
               validate(A<std::shared_ptr<const iroha::model::Query>>()))
       .WillOnce(Return(true));
@@ -355,7 +389,14 @@ TEST_F(ToriiServiceTest, FindSignatoriesWhenValid) {
   std::vector<iroha::ed25519::pubkey_t> keys;
   keys.push_back(pubkey);
 
-  EXPECT_CALL(*wsv_query, getAccount("accountA")).WillOnce(Return(account));
+  // TODO: refactor this to use stateful validation mocks
+  auto creator =  "accountA";
+  std::vector<std::string> roles = {"test"};
+  EXPECT_CALL(*wsv_query, getAccountRoles(creator))
+      .WillOnce(Return(roles));
+  std::vector<std::string> perm = {can_get_my_signatories};
+  EXPECT_CALL(*wsv_query, getRolePermissions("test"))
+      .WillOnce(Return(perm));
   EXPECT_CALL(*wsv_query, getSignatories(_)).WillOnce(Return(keys));
 
   iroha::protocol::QueryResponse response;
@@ -399,7 +440,14 @@ TEST_F(ToriiServiceTest, FindTransactionsWhenValid) {
     return result;
   }());
 
-  EXPECT_CALL(*wsv_query, getAccount(_)).WillOnce(Return(account));
+  // TODO: refactor this to use stateful validation mocks
+  auto creator =  "accountA";
+  std::vector<std::string> roles = {"test"};
+  EXPECT_CALL(*wsv_query, getAccountRoles(creator))
+      .WillOnce(Return(roles));
+  std::vector<std::string> perm = {can_get_my_acc_txs};
+  EXPECT_CALL(*wsv_query, getRolePermissions("test"))
+      .WillOnce(Return(perm));
   EXPECT_CALL(*block_query, getAccountTransactions(account.account_id))
       .WillOnce(Return(txs_observable));
 
