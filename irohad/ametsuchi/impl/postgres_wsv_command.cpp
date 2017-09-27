@@ -37,7 +37,7 @@ namespace iroha {
 
     bool PostgresWsvCommand::insertRolePermissions(
         const std::string &role_id,
-        const std::vector<std::string> &permissions) {
+        const std::set<std::string> &permissions) {
       // TODO: implement
       return false;
     };
