@@ -700,9 +700,10 @@ TEST_F(AmetsuchiTest, GetAccountTransactionsWithPagerTest) {
     hashProvider.get_hash(block);
   };
 
-  {
+  { //////////////////////////////////////////////////////////////////////////////////
     Block block;
     {
+      // Given Transaction 1 CreateDomain, CreateAccount alice@domain1, CreateAccount bob@domain1
       Transaction txn;
       txn.commands = {
         std::make_shared<CreateDomain>(domain1name),
@@ -713,6 +714,7 @@ TEST_F(AmetsuchiTest, GetAccountTransactionsWithPagerTest) {
       block.transactions.push_back(txn);
     }
     {
+      // Given Transaction 2 CreateAccount charlie@domain1
       Transaction txn;
       txn.commands = {
         std::make_shared<CreateAccount>(user3name, domain1name, iroha::ed25519::pubkey_t{})
@@ -721,6 +723,7 @@ TEST_F(AmetsuchiTest, GetAccountTransactionsWithPagerTest) {
       block.transactions.push_back(txn);
     }
     {
+      // Given Transaction 3 CreateAccount eve@domain2
       Transaction txn;
       txn.commands = {
         std::make_shared<CreateAccount>(user4name, domain2name, iroha::ed25519::pubkey_t{})
@@ -730,6 +733,7 @@ TEST_F(AmetsuchiTest, GetAccountTransactionsWithPagerTest) {
     }
     assign_dummy_block_info(block, iroha::hash256_t{});
 
+    // When Storing into MutableStorage
     auto ms = storage->createMutableStorage();
     ms->apply(block, [](const auto &blk, auto &query, const auto &top_hash) {
       return true;
@@ -737,7 +741,23 @@ TEST_F(AmetsuchiTest, GetAccountTransactionsWithPagerTest) {
     storage->commit(std::move(ms));
   }
 
+  // Then Account alice@domain1 should be load.
   auto account1 = wsv->getAccount(user1id);
   ASSERT_TRUE(account1);
   ASSERT_STREQ((user1name + "@" + domain1name).c_str(), account1->account_id.c_str());
+
+  // Then Account bob@domain1 should be load.
+  auto account2 = wsv->getAccount(user2id);
+  ASSERT_TRUE(account2);
+  ASSERT_STREQ((user2name + "@" + domain1name).c_str(), account2->account_id.c_str());
+
+  // Then Account charlie@domain1 should be load.
+  auto account3 = wsv->getAccount(user3id);
+  ASSERT_TRUE(account3);
+  ASSERT_STREQ((user3name + "@" + domain1name).c_str(), account3->account_id.c_str());
+
+  // Then Account eve@domain2 should be load.
+  ASSERT_TRUE(account4);
+  ASSERT_TRUE((user4name + "@" + domain2name).c_str(), account4->account_id.c_str());
+
 }
