@@ -28,9 +28,16 @@
 #include "model/commands/set_quorum.hpp"
 #include "model/commands/transfer_asset.hpp"
 
+#include "model/commands/create_role.hpp"
+#include "model/commands/append_role.hpp"
+#include "model/commands/grant_permission.hpp"
+#include "model/commands/revoke_permission.hpp"
+
 #include "model/converters/pb_command_factory.hpp"
 
 #include <algorithm>
+
+using namespace iroha::model;
 
 void command_converter_test(iroha::model::Command &abstract_command) {
   auto factory = iroha::model::converters::PbCommandFactory();
@@ -42,9 +49,7 @@ void command_converter_test(iroha::model::Command &abstract_command) {
 TEST(CommandTest, add_asset_quantity) {
   auto orig_command = iroha::model::AddAssetQuantity();
   orig_command.account_id = "23";
-  iroha::Amount amount;
-  amount.frac_part = 50;
-  amount.int_part = 1;
+  iroha::Amount amount(50,1);
 
   orig_command.amount = amount;
   orig_command.asset_id = "23";
@@ -175,7 +180,7 @@ TEST(CommandTest, set_transfer_asset) {
   auto factory = iroha::model::converters::PbCommandFactory();
 
   auto orig_command = iroha::model::TransferAsset();
-  orig_command.amount = {1, 20};
+  orig_command.amount = {120, 2};
   orig_command.asset_id = "tugrik";
   orig_command.src_account_id = "Vasya";
   orig_command.dest_account_id = "Petya";
@@ -189,3 +194,54 @@ TEST(CommandTest, set_transfer_asset) {
   command_converter_test(orig_command);
 }
 
+TEST(CommandTest, create_role) {
+  auto factory = iroha::model::converters::PbCommandFactory();
+
+  auto orig_command = CreateRole("master", {"CanDoMagic"});
+
+  auto proto_command = factory.serializeCreateRole(orig_command);
+  auto serial_command = factory.deserializeCreateRole(proto_command);
+
+  ASSERT_EQ(orig_command, serial_command);
+
+  command_converter_test(orig_command);
+}
+
+TEST(CommandTest, append_role) {
+  auto factory = iroha::model::converters::PbCommandFactory();
+
+  auto orig_command = AppendRole("test@test", "master");
+
+  auto proto_command = factory.serializeAppendRole(orig_command);
+  auto serial_command = factory.deserializeAppendRole(proto_command);
+
+  ASSERT_EQ(orig_command, serial_command);
+
+  command_converter_test(orig_command);
+}
+
+TEST(CommandTest, grant_permission) {
+  auto factory = iroha::model::converters::PbCommandFactory();
+
+  auto orig_command = GrantPermission("admin@test", "can_read");
+
+  auto proto_command = factory.serializeGrantPermission(orig_command);
+  auto serial_command = factory.deserializeGrantPermission(proto_command);
+
+  ASSERT_EQ(orig_command, serial_command);
+
+  command_converter_test(orig_command);
+}
+
+TEST(CommandTest, revoke_permission) {
+  auto factory = iroha::model::converters::PbCommandFactory();
+
+  auto orig_command = RevokePermission("admin@test", "can_read");
+
+  auto proto_command = factory.serializeRevokePermission(orig_command);
+  auto serial_command = factory.deserializeRevokePermission(proto_command);
+
+  ASSERT_EQ(orig_command, serial_command);
+
+  command_converter_test(orig_command);
+}

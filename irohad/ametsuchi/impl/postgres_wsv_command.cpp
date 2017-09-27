@@ -24,6 +24,38 @@ namespace iroha {
     PostgresWsvCommand::PostgresWsvCommand(pqxx::nontransaction &transaction)
         : transaction_(transaction) {}
 
+    bool PostgresWsvCommand::insertRole(const std::string &role_name) {
+      // TODO: implement
+      return false;
+    };
+
+    bool PostgresWsvCommand::insertAccountRole(const std::string &account_id,
+                                               const std::string &role_name) {
+      // TODO: implement
+      return false;
+    };
+
+    bool PostgresWsvCommand::insertRolePermissions(
+        const std::string &role_id,
+        const std::vector<std::string> &permissions) {
+      // TODO: implement
+      return false;
+    };
+
+    bool PostgresWsvCommand::insertAccountGrantablePermission(
+        const std::string &permittee_account_id, const std::string &account_id,
+        const std::string &permission_id) {
+      // TODO: implement
+      return false;
+    };
+
+    bool PostgresWsvCommand::deleteAccountGrantablePermission(
+        const std::string &permittee_account_id, const std::string &account_id,
+        const std::string &permission_id) {
+      // TODO: implement
+      return false;
+    };
+
     bool PostgresWsvCommand::insertAccount(const model::Account &account) {
       std::stringstream permissions;
       permissions << account.permissions.add_signatory
@@ -64,11 +96,11 @@ namespace iroha {
         transaction_.exec(
             "INSERT INTO asset(\n"
             "            asset_id, domain_id, \"precision\", data)\n"
-            "    VALUES (" +
-            transaction_.quote(asset.asset_id) + ", " +
-            transaction_.quote(asset.domain_id) + ", " +
-            transaction_.quote(precision) + ", " + /*asset.data*/ "NULL" +
-            ");");
+            "    VALUES ("
+            + transaction_.quote(asset.asset_id) + ", "
+            + transaction_.quote(asset.domain_id) + ", "
+            + transaction_.quote(precision) + ", " + /*asset.data*/ "NULL"
+            + ");");
       } catch (const std::exception &e) {
         return false;
       }
@@ -84,7 +116,7 @@ namespace iroha {
             "    VALUES (" +
             transaction_.quote(asset.account_id) + ", " +
             transaction_.quote(asset.asset_id) + ", " +
-            transaction_.quote(asset.balance) + ", " +
+            transaction_.quote(asset.balance.to_string()) + ", " +
             /*asset.permissions*/ transaction_.quote(0) +
             ")\n"
             "    ON CONFLICT (account_id, asset_id)\n"
@@ -102,9 +134,9 @@ namespace iroha {
       try {
         pqxx::binarystring public_key(signatory.data(), signatory.size());
         transaction_.exec(
-            "INSERT INTO signatory(\n"
-            "            public_key)\n"
-            "    VALUES (" +
+            "INSERT INTO signatory(public_key)\n"
+            "            SELECT " + transaction_.quote(public_key)+ "\n"+
+            "    WHERE NOT EXISTS (SELECT 1 FROM signatory WHERE public_key = " +
             transaction_.quote(public_key) + ");");
       } catch (const std::exception &e) {
         return false;
@@ -119,9 +151,9 @@ namespace iroha {
         transaction_.exec(
             "INSERT INTO account_has_signatory(\n"
             "            account_id, public_key)\n"
-            "    VALUES (" +
-            transaction_.quote(account_id) + ", " +
-            transaction_.quote(public_key) + ");");
+            "    VALUES ("
+            + transaction_.quote(account_id) + ", "
+            + transaction_.quote(public_key) + ");");
       } catch (const std::exception &e) {
         return false;
       }
@@ -134,9 +166,24 @@ namespace iroha {
       try {
         transaction_.exec(
             "DELETE FROM account_has_signatory\n"
-            " WHERE account_id=" +
-            transaction_.quote(account_id) + " AND public_key=" +
-            transaction_.quote(public_key) + ";");
+            " WHERE account_id="
+            + transaction_.quote(account_id)
+            + " AND public_key=" + transaction_.quote(public_key) + ";");
+      } catch (const std::exception &e) {
+        return false;
+      }
+      return true;
+    }
+
+    bool PostgresWsvCommand::deleteSignatory(const ed25519::pubkey_t &signatory) {
+      pqxx::binarystring public_key(signatory.data(), signatory.size());
+      try {
+        transaction_.exec(
+            "DELETE FROM signatory\n"
+                " WHERE public_key=" + transaction_.quote(public_key) + "\n" +
+                " AND NOT EXISTS (SELECT 1 FROM account_has_signatory WHERE public_key = " + transaction_.quote(public_key) + ")" +
+                " AND NOT EXISTS (SELECT 1 FROM peer WHERE public_key = " + transaction_.quote(public_key) + ");"
+        );
       } catch (const std::exception &e) {
         return false;
       }
@@ -149,9 +196,9 @@ namespace iroha {
         transaction_.exec(
             "INSERT INTO peer(\n"
             "            public_key, address, state)\n"
-            "    VALUES (" +
-            transaction_.quote(public_key) + ", " +
-            transaction_.quote(peer.address) + ", " +
+            "    VALUES ("
+            + transaction_.quote(public_key) + ", "
+            + transaction_.quote(peer.address) + ", " +
             /*peer.state*/ transaction_.quote(0) + ");");
       } catch (const std::exception &e) {
         return false;
@@ -164,9 +211,9 @@ namespace iroha {
       try {
         transaction_.exec(
             "DELETE FROM peer\n"
-            " WHERE public_key=" +
-            transaction_.quote(public_key) + " AND address=" +
-            transaction_.quote(peer.address) + ";");
+            " WHERE public_key="
+            + transaction_.quote(public_key)
+            + " AND address=" + transaction_.quote(peer.address) + ";");
       } catch (const std::exception &e) {
         return false;
       }
@@ -178,8 +225,8 @@ namespace iroha {
         transaction_.exec(
             "INSERT INTO domain(\n"
             "            domain_id, open)\n"
-            "    VALUES (" +
-            transaction_.quote(domain.domain_id) + ", " +
+            "    VALUES ("
+            + transaction_.quote(domain.domain_id) + ", " +
             /*domain.open*/ transaction_.quote(true) + ");");
       } catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;

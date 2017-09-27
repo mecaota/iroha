@@ -16,7 +16,9 @@
  */
 
 #include "model/converters/pb_command_factory.hpp"
+#include "model/converters/pb_common.hpp"
 
+#include <commands.pb.h>
 #include <string>
 
 namespace iroha {
@@ -30,8 +32,7 @@ namespace iroha {
         pb_add_asset_quantity.set_account_id(add_asset_quantity.account_id);
         pb_add_asset_quantity.set_asset_id(add_asset_quantity.asset_id);
         auto amount = pb_add_asset_quantity.mutable_amount();
-        amount->set_integer_part(add_asset_quantity.amount.int_part);
-        amount->set_fractial_part(add_asset_quantity.amount.frac_part);
+        amount->CopyFrom(serializeAmount(add_asset_quantity.amount));
         return pb_add_asset_quantity;
       }
 
@@ -40,10 +41,8 @@ namespace iroha {
         model::AddAssetQuantity add_asset_quantity;
         add_asset_quantity.account_id = pb_add_asset_quantity.account_id();
         add_asset_quantity.asset_id = pb_add_asset_quantity.asset_id();
-        Amount amount;
-        amount.int_part = pb_add_asset_quantity.amount().integer_part();
-        amount.frac_part = pb_add_asset_quantity.amount().fractial_part();
-        add_asset_quantity.amount = amount;
+        add_asset_quantity.amount =
+            deserializeAmount(pb_add_asset_quantity.amount());
 
         return add_asset_quantity;
       }
@@ -239,13 +238,13 @@ namespace iroha {
       protocol::TransferAsset PbCommandFactory::serializeTransferAsset(
           const model::TransferAsset &transfer_asset) {
         protocol::TransferAsset pb_transfer_asset;
+
         pb_transfer_asset.set_src_account_id(transfer_asset.src_account_id);
         pb_transfer_asset.set_dest_account_id(transfer_asset.dest_account_id);
         pb_transfer_asset.set_asset_id(transfer_asset.asset_id);
         pb_transfer_asset.set_description(transfer_asset.description);
         auto amount = pb_transfer_asset.mutable_amount();
-        amount->set_integer_part(transfer_asset.amount.int_part);
-        amount->set_fractial_part(transfer_asset.amount.frac_part);
+        amount->CopyFrom(serializeAmount(transfer_asset.amount));
         return pb_transfer_asset;
       }
 
@@ -258,17 +257,110 @@ namespace iroha {
             pb_subtract_asset_quantity.dest_account_id();
         transfer_asset.asset_id = pb_subtract_asset_quantity.asset_id();
         transfer_asset.description = pb_subtract_asset_quantity.description();
-        transfer_asset.amount.int_part =
-            pb_subtract_asset_quantity.amount().integer_part();
-        transfer_asset.amount.frac_part =
-            pb_subtract_asset_quantity.amount().fractial_part();
+        transfer_asset.amount =
+            deserializeAmount(pb_subtract_asset_quantity.amount());
         return transfer_asset;
+      }
+
+      // Append Role
+      model::AppendRole PbCommandFactory::deserializeAppendRole(
+          const protocol::AppendRole &command) {
+        return AppendRole(command.account_id(), command.role_name());
+      }
+
+      protocol::AppendRole PbCommandFactory::serializeAppendRole(
+          const model::AppendRole &command) {
+        protocol::AppendRole cmd;
+        cmd.set_account_id(command.account_id);
+        cmd.set_role_name(command.role_name);
+        return cmd;
+      }
+
+      // Create Role
+      model::CreateRole PbCommandFactory::deserializeCreateRole(
+          const protocol::CreateRole &command) {
+        std::vector<std::string> perms;
+        std::for_each(command.permissions().begin(), command.permissions().end(),
+                  [&perms](auto perm){
+                    perms.push_back(perm);
+                  });
+        return CreateRole(command.role_name(), perms);
+      }
+
+      protocol::CreateRole PbCommandFactory::serializeCreateRole(
+          const model::CreateRole &command) {
+        protocol::CreateRole cmd;
+        cmd.set_role_name(command.role_name);
+        //cmd.mutable_permissions();
+        std::for_each(command.permissions.begin(), command.permissions.end(), [&cmd](auto perm){
+          cmd.add_permissions(perm);
+        });
+        return cmd;
+      }
+
+      // Grant Permission
+      protocol::GrantPermission PbCommandFactory::serializeGrantPermission(
+          const model::GrantPermission &command) {
+        protocol::GrantPermission cmd;
+        cmd.set_account_id(command.account_id);
+        cmd.set_permission_name(command.permission_name);
+        return cmd;
+      }
+
+      model::GrantPermission PbCommandFactory::deserializeGrantPermission(
+          const protocol::GrantPermission &command) {
+        return GrantPermission(command.account_id(), command.permission_name());
+      }
+
+      protocol::RevokePermission PbCommandFactory::serializeRevokePermission(
+          const model::RevokePermission &command) {
+        protocol::RevokePermission cmd;
+        cmd.set_account_id(command.account_id);
+        cmd.set_permission_name(command.permission_name);
+        return cmd;
+      }
+
+      model::RevokePermission PbCommandFactory::deserializeRevokePermission(
+          const protocol::RevokePermission &command) {
+        return RevokePermission(command.account_id(),
+                                command.permission_name());
       }
 
       protocol::Command PbCommandFactory::serializeAbstractCommand(
           const model::Command &command) {
         PbCommandFactory commandFactory;
         auto cmd = protocol::Command();
+        // TODO: refactor this
+
+        // -----|CreateRole|-----
+        if (instanceof <model::CreateRole>(command)) {
+          auto serialized = commandFactory.serializeCreateRole(
+              static_cast<const model::CreateRole &>(command));
+          cmd.set_allocated_create_role(new protocol::CreateRole(serialized));
+        }
+
+        // -----|AppendRole|-----
+        if (instanceof <model::AppendRole>(command)) {
+          auto serialized = commandFactory.serializeAppendRole(
+              static_cast<const model::AppendRole &>(command));
+          cmd.set_allocated_append_role(new protocol::AppendRole(serialized));
+        }
+
+        // -----|GrantPermission|-----
+        if (instanceof <model::GrantPermission>(command)) {
+          auto serialized = commandFactory.serializeGrantPermission(
+              static_cast<const model::GrantPermission &>(command));
+          cmd.set_allocated_grant_permission(
+              new protocol::GrantPermission(serialized));
+        }
+
+        // -----|RevokePermission|-----
+        if (instanceof <model::RevokePermission>(command)) {
+          auto serialized = commandFactory.serializeRevokePermission(
+              static_cast<const model::RevokePermission &>(command));
+          cmd.set_allocated_revoke_permission(
+              new protocol::RevokePermission(serialized));
+        }
 
         // -----|AddAssetQuantity|-----
         if (instanceof <model::AddAssetQuantity>(command)) {
@@ -294,9 +386,9 @@ namespace iroha {
         }
 
         // -----|CreateAsset|-----
-        if (instanceof<model::CreateAsset>(command)) {
+        if (instanceof <model::CreateAsset>(command)) {
           auto serialized = commandFactory.serializeCreateAsset(
-                  static_cast<const model::CreateAsset &>(command));
+              static_cast<const model::CreateAsset &>(command));
           cmd.set_allocated_create_asset(new protocol::CreateAsset(serialized));
         }
 
@@ -356,6 +448,34 @@ namespace iroha {
           const protocol::Command &command) {
         PbCommandFactory commandFactory;
         std::shared_ptr<model::Command> val;
+
+        // -----|CreateRole|-----
+        if (command.has_create_role()) {
+          auto pb_command = command.create_role();
+          auto cmd = commandFactory.deserializeCreateRole(pb_command);
+          val = std::make_shared<model::CreateRole>(cmd);
+        }
+
+        // -----|AppendRole|-----
+        if (command.has_append_role()) {
+          auto pb_command = command.append_role();
+          auto cmd = commandFactory.deserializeAppendRole(pb_command);
+          val = std::make_shared<model::AppendRole>(cmd);
+        }
+
+        // -----|GrantPermission|-----
+        if (command.has_grant_permission()) {
+          auto pb_command = command.grant_permission();
+          auto cmd = commandFactory.deserializeGrantPermission(pb_command);
+          val = std::make_shared<model::GrantPermission>(cmd);
+        }
+
+        // -----|RevokePermission|-----
+        if (command.has_revoke_permission()) {
+          auto pb_command = command.revoke_permission();
+          auto cmd = commandFactory.deserializeRevokePermission(pb_command);
+          val = std::make_shared<model::RevokePermission>(cmd);
+        }
 
         // -----|AddAssetQuantity|-----
         if (command.has_add_asset_quantity()) {

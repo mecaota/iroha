@@ -26,6 +26,7 @@
 #include "model/commands/create_asset.hpp"
 #include "model/commands/create_domain.hpp"
 #include "model/commands/remove_signatory.hpp"
+#include "model/commands/set_quorum.hpp"
 #include "model/commands/transfer_asset.hpp"
 #include "model/model_hash_provider_impl.hpp"
 #include "module/irohad/ametsuchi/ametsuchi_fixture.hpp"
@@ -112,9 +113,7 @@ TEST_F(AmetsuchiTest, SampleTest) {
   AddAssetQuantity addAssetQuantity;
   addAssetQuantity.asset_id = "RUB#ru";
   addAssetQuantity.account_id = "user1@ru";
-  iroha::Amount asset_amount;
-  asset_amount.int_part = 1;
-  asset_amount.frac_part = 50;
+  iroha::Amount asset_amount(150, 2);
   addAssetQuantity.amount = asset_amount;
   txn.commands.push_back(std::make_shared<AddAssetQuantity>(addAssetQuantity));
   TransferAsset transferAsset;
@@ -122,9 +121,7 @@ TEST_F(AmetsuchiTest, SampleTest) {
   transferAsset.dest_account_id = "user2@ru";
   transferAsset.asset_id = "RUB#ru";
   transferAsset.description = "test transfer";
-  iroha::Amount transfer_amount;
-  transfer_amount.int_part = 1;
-  transfer_amount.frac_part = 0;
+  iroha::Amount transfer_amount(100, 2);
   transferAsset.amount = transfer_amount;
   txn.commands.push_back(std::make_shared<TransferAsset>(transferAsset));
 
@@ -147,12 +144,12 @@ TEST_F(AmetsuchiTest, SampleTest) {
     ASSERT_TRUE(asset1);
     ASSERT_EQ(asset1->account_id, "user1@ru");
     ASSERT_EQ(asset1->asset_id, "RUB#ru");
-    ASSERT_EQ(asset1->balance, 50);
+    ASSERT_EQ(asset1->balance, iroha::Amount(50, 2));
     auto asset2 = wsv->getAccountAsset("user2@ru", "RUB#ru");
     ASSERT_TRUE(asset2);
     ASSERT_EQ(asset2->account_id, "user2@ru");
     ASSERT_EQ(asset2->asset_id, "RUB#ru");
-    ASSERT_EQ(asset2->balance, 100);
+    ASSERT_EQ(asset2->balance, iroha::Amount(100, 2));
   }
 
   // Block store tests
@@ -255,12 +252,12 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
   AddAssetQuantity addAssetQuantity1;
   addAssetQuantity1.asset_id = asset1id;
   addAssetQuantity1.account_id = user1id;
-  addAssetQuantity1.amount = iroha::Amount(3, 00);
+  addAssetQuantity1.amount = iroha::Amount(300, 2);
   txn.commands.push_back(std::make_shared<AddAssetQuantity>(addAssetQuantity1));
   AddAssetQuantity addAssetQuantity2;
   addAssetQuantity2.asset_id = asset2id;
   addAssetQuantity2.account_id = user2id;
-  addAssetQuantity2.amount = iroha::Amount(2, 50);
+  addAssetQuantity2.amount = iroha::Amount(250, 2);
   txn.commands.push_back(std::make_shared<AddAssetQuantity>(addAssetQuantity2));
 
   Block block;
@@ -297,12 +294,12 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
     ASSERT_TRUE(asset1);
     ASSERT_EQ(asset1->account_id, user1id);
     ASSERT_EQ(asset1->asset_id, asset1id);
-    ASSERT_EQ(asset1->balance, 300);
+    ASSERT_EQ(asset1->balance, iroha::Amount(300, 2));
     auto asset2 = wsv->getAccountAsset(user2id, asset2id);
     ASSERT_TRUE(asset2);
     ASSERT_EQ(asset2->account_id, user2id);
     ASSERT_EQ(asset2->asset_id, asset2id);
-    ASSERT_EQ(asset2->balance, 250);
+    ASSERT_EQ(asset2->balance, iroha::Amount(250, 2));
   }
 
   // 2th tx (user1 -> user2 # asset1)
@@ -312,7 +309,7 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
   transferAsset.src_account_id = user1id;
   transferAsset.dest_account_id = user2id;
   transferAsset.asset_id = asset1id;
-  transferAsset.amount = iroha::Amount(1, 20);
+  transferAsset.amount = iroha::Amount(120, 2);
   txn.commands.push_back(std::make_shared<TransferAsset>(transferAsset));
 
   block = Block();
@@ -334,12 +331,12 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
     ASSERT_TRUE(asset1);
     ASSERT_EQ(asset1->account_id, user1id);
     ASSERT_EQ(asset1->asset_id, asset1id);
-    ASSERT_EQ(asset1->balance, 180);
+    ASSERT_EQ(asset1->balance, iroha::Amount(180, 2));
     auto asset2 = wsv->getAccountAsset(user2id, asset1id);
     ASSERT_TRUE(asset2);
     ASSERT_EQ(asset2->account_id, user2id);
     ASSERT_EQ(asset2->asset_id, asset1id);
-    ASSERT_EQ(asset2->balance, 120);
+    ASSERT_EQ(asset2->balance, iroha::Amount(120, 2));
   }
 
   // 3rd tx
@@ -351,13 +348,13 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
   transferAsset1.src_account_id = user2id;
   transferAsset1.dest_account_id = user3id;
   transferAsset1.asset_id = asset2id;
-  transferAsset1.amount = iroha::Amount(1, 50);
+  transferAsset1.amount = iroha::Amount(150, 2);
   txn.commands.push_back(std::make_shared<TransferAsset>(transferAsset1));
   TransferAsset transferAsset2;
   transferAsset2.src_account_id = user2id;
   transferAsset2.dest_account_id = user1id;
   transferAsset2.asset_id = asset2id;
-  transferAsset2.amount = iroha::Amount(0, 10);
+  transferAsset2.amount = iroha::Amount(10, 2);
   txn.commands.push_back(std::make_shared<TransferAsset>(transferAsset2));
 
   block = Block();
@@ -379,17 +376,17 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
     ASSERT_TRUE(asset1);
     ASSERT_EQ(asset1->account_id, user2id);
     ASSERT_EQ(asset1->asset_id, asset2id);
-    ASSERT_EQ(asset1->balance, 90);
+    ASSERT_EQ(asset1->balance, iroha::Amount(90, 2));
     auto asset2 = wsv->getAccountAsset(user3id, asset2id);
     ASSERT_TRUE(asset2);
     ASSERT_EQ(asset2->account_id, user3id);
     ASSERT_EQ(asset2->asset_id, asset2id);
-    ASSERT_EQ(asset2->balance, 150);
+    ASSERT_EQ(asset2->balance, iroha::Amount(150, 2));
     auto asset3 = wsv->getAccountAsset(user1id, asset2id);
     ASSERT_TRUE(asset3);
     ASSERT_EQ(asset3->account_id, user1id);
     ASSERT_EQ(asset3->asset_id, asset2id);
-    ASSERT_EQ(asset3->balance, 10);
+    ASSERT_EQ(asset3->balance, iroha::Amount(10, 2));
   }
 
   // Block store tests
@@ -427,6 +424,244 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
       [](auto tx) { EXPECT_EQ(tx.commands.size(), 2); });
   blocks->getAccountAssetTransactions(user3id, asset2id).subscribe(
       [](auto tx) { EXPECT_EQ(tx.commands.size(), 1); });
+}
+
+TEST_F(AmetsuchiTest, AddSignatoryTest) {
+  HashProviderImpl hashProvider;
+
+  auto storage = StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
+  ASSERT_TRUE(storage);
+  auto wsv = storage->getWsvQuery();
+
+  iroha::ed25519::pubkey_t pubkey1, pubkey2;
+  pubkey1.at(0) = 1;
+  pubkey2.at(0) = 2;
+
+  auto user1id = "user1@domain";
+  auto user2id = "user2@domain";
+
+  // 1st tx (create user1 with pubkey1)
+  Transaction txn;
+  txn.creator_account_id = "admin1";
+  CreateDomain createDomain;
+  createDomain.domain_name = "domain";
+  txn.commands.push_back(std::make_shared<CreateDomain>(createDomain));
+  CreateAccount createAccount;
+  createAccount.account_name = "user1";
+  createAccount.domain_id = "domain";
+  createAccount.pubkey = pubkey1;
+  txn.commands.push_back(std::make_shared<CreateAccount>(createAccount));
+
+  Block block;
+  block.transactions.push_back(txn);
+  block.height = 1;
+  block.prev_hash.fill(0);
+  auto block1hash = hashProvider.get_hash(block);
+  block.hash = block1hash;
+  block.txs_number = block.transactions.size();
+
+  {
+    auto ms = storage->createMutableStorage();
+    ms->apply(block, [](const auto &blk, auto &query, const auto &top_hash) {
+      return true;
+    });
+    storage->commit(std::move(ms));
+  }
+
+  {
+    auto account = wsv->getAccount(user1id);
+    ASSERT_TRUE(account);
+    ASSERT_EQ(account->account_id, user1id);
+    ASSERT_EQ(account->domain_name, createAccount.domain_id);
+
+    auto signatories = wsv->getSignatories(user1id);
+    ASSERT_TRUE(signatories);
+    ASSERT_EQ(signatories->size(), 1);
+    ASSERT_EQ(signatories->at(0), pubkey1);
+  }
+
+  // 2nd tx (add sig2 to user1)
+  txn = Transaction();
+  txn.creator_account_id = user1id;
+  auto addSignatory = AddSignatory();
+  addSignatory.account_id = user1id;
+  addSignatory.pubkey = pubkey2;
+  txn.commands.push_back(std::make_shared<AddSignatory>(addSignatory));
+
+  block = Block();
+  block.transactions.push_back(txn);
+  block.height = 2;
+  block.prev_hash = block1hash;
+  auto block2hash = hashProvider.get_hash(block);
+  block.hash = block2hash;
+  block.txs_number = block.transactions.size();
+
+  {
+    auto ms = storage->createMutableStorage();
+    ms->apply(block, [](const auto &, auto &, const auto &) { return true; });
+    storage->commit(std::move(ms));
+  }
+
+  {
+    auto account = wsv->getAccount(user1id);
+    ASSERT_TRUE(account);
+
+    auto signatories = wsv->getSignatories(user1id);
+    ASSERT_TRUE(signatories);
+    ASSERT_EQ(signatories->size(), 2);
+    ASSERT_EQ(signatories->at(0), pubkey1);
+    ASSERT_EQ(signatories->at(1), pubkey2);
+  }
+
+  // 3rd tx (create user2 with pubkey1 that is same as user1's key)
+  txn = Transaction();
+  txn.creator_account_id = "admin2";
+  createAccount = CreateAccount();
+  createAccount.account_name = "user2";
+  createAccount.domain_id = "domain";
+  createAccount.pubkey = pubkey1; // same as user1's pubkey1
+  txn.commands.push_back(std::make_shared<CreateAccount>(createAccount));
+
+  block = Block();
+  block.transactions.push_back(txn);
+  block.height = 3;
+  block.prev_hash = block2hash;
+  auto block3hash = hashProvider.get_hash(block);
+  block.hash = block3hash;
+  block.txs_number = block.transactions.size();
+
+  {
+    auto ms = storage->createMutableStorage();
+    ms->apply(block, [](const auto &, auto &, const auto &) { return true; });
+    storage->commit(std::move(ms));
+  }
+
+  {
+    auto account1 = wsv->getAccount(user1id);
+    ASSERT_TRUE(account1);
+
+    auto account2 = wsv->getAccount(user2id);
+    ASSERT_TRUE(account2);
+
+    auto signatories1 = wsv->getSignatories(user1id);
+    ASSERT_TRUE(signatories1);
+    ASSERT_EQ(signatories1->size(), 2);
+    ASSERT_EQ(signatories1->at(0), pubkey1);
+    ASSERT_EQ(signatories1->at(1), pubkey2);
+
+    auto signatories2 = wsv->getSignatories(user2id);
+    ASSERT_TRUE(signatories2);
+    ASSERT_EQ(signatories2->size(), 1);
+    ASSERT_EQ(signatories2->at(0), pubkey1);
+  }
+
+  // 4th tx (remove pubkey1 from user1)
+  txn = Transaction();
+  txn.creator_account_id = user1id;
+  auto removeSignatory = RemoveSignatory();
+  removeSignatory.account_id = user1id;
+  removeSignatory.pubkey = pubkey1;
+  txn.commands.push_back(std::make_shared<RemoveSignatory>(removeSignatory));
+
+  block = Block();
+  block.transactions.push_back(txn);
+  block.height = 4;
+  block.prev_hash = block3hash;
+  auto block4hash = hashProvider.get_hash(block);
+  block.hash = block4hash;
+  block.txs_number = block.transactions.size();
+
+  {
+    auto ms = storage->createMutableStorage();
+    ms->apply(block, [](const auto &, auto &, const auto &) { return true; });
+    storage->commit(std::move(ms));
+  }
+
+  {
+    auto account = wsv->getAccount(user1id);
+    ASSERT_TRUE(account);
+
+    // user1 has only pubkey2.
+    auto signatories1 = wsv->getSignatories(user1id);
+    ASSERT_TRUE(signatories1);
+    ASSERT_EQ(signatories1->size(), 1);
+    ASSERT_EQ(signatories1->at(0), pubkey2);
+
+    // user2 still has pubkey1.
+    auto signatories2 = wsv->getSignatories(user2id);
+    ASSERT_TRUE(signatories2);
+    ASSERT_EQ(signatories2->size(), 1);
+    ASSERT_EQ(signatories2->at(0), pubkey1);
+  }
+
+  // 5th tx (add sig2 to user2 and set quorum = 1)
+  txn = Transaction();
+  txn.creator_account_id = user2id;
+  addSignatory = AddSignatory();
+  addSignatory.account_id = user2id;
+  addSignatory.pubkey = pubkey2;
+  txn.commands.push_back(std::make_shared<AddSignatory>(addSignatory));
+  auto seqQuorum = SetQuorum();
+  seqQuorum.account_id = user2id;
+  seqQuorum.new_quorum = 2;
+  txn.commands.push_back(std::make_shared<SetQuorum>(seqQuorum));
+
+  block = Block();
+  block.transactions.push_back(txn);
+  block.height = 5;
+  block.prev_hash = block4hash;
+  auto block5hash = hashProvider.get_hash(block);
+  block.hash = block5hash;
+  block.txs_number = block.transactions.size();
+
+  {
+    auto ms = storage->createMutableStorage();
+    ms->apply(block, [](const auto &, auto &, const auto &) { return true; });
+    storage->commit(std::move(ms));
+  }
+
+  {
+    auto account = wsv->getAccount(user2id);
+    ASSERT_TRUE(account);
+    ASSERT_EQ(account->quorum, 2);
+
+    // user2 has pubkey1 and pubkey2.
+    auto signatories = wsv->getSignatories(user2id);
+    ASSERT_TRUE(signatories);
+    ASSERT_EQ(signatories->size(), 2);
+    ASSERT_EQ(signatories->at(0), pubkey1);
+    ASSERT_EQ(signatories->at(1), pubkey2);
+  }
+
+  // 6th tx (remove sig2 fro user2: This must success)
+  txn = Transaction();
+  txn.creator_account_id = user2id;
+  removeSignatory = RemoveSignatory();
+  removeSignatory.account_id = user2id;
+  removeSignatory.pubkey = pubkey2;
+  txn.commands.push_back(std::make_shared<RemoveSignatory>(removeSignatory));
+
+  block = Block();
+  block.transactions.push_back(txn);
+  block.height = 6;
+  block.prev_hash = block5hash;
+  auto block6hash = hashProvider.get_hash(block);
+  block.hash = block6hash;
+  block.txs_number = block.transactions.size();
+
+  {
+    auto ms = storage->createMutableStorage();
+    ms->apply(block, [](const auto &, auto &, const auto &) { return true; });
+    storage->commit(std::move(ms));
+  }
+
+  {
+    // user2 only has pubkey1.
+    auto signatories = wsv->getSignatories(user2id);
+    ASSERT_TRUE(signatories);
+    ASSERT_EQ(signatories->size(), 1);
+    ASSERT_EQ(signatories->at(0), pubkey1);
+  }
 }
 
 TEST_F(AmetsuchiTest, GetAccountTransactionsWithPagerTest) {

@@ -32,6 +32,30 @@ namespace iroha {
     PostgresWsvQuery::PostgresWsvQuery(pqxx::nontransaction &transaction)
         : transaction_(transaction) {}
 
+    bool PostgresWsvQuery::hasAccountGrantablePermission(
+        const std::string &permitee_account_id, const std::string &account_id,
+        const std::string &permission_id) {
+      // TODO: implement
+      return false;
+    };
+
+    nonstd::optional<std::vector<std::string>>
+    PostgresWsvQuery::getAccountRoles(const std::string &account_id) {
+      // TODO: implement
+      return nonstd::nullopt;
+    };
+
+    nonstd::optional<std::vector<std::string>>
+    PostgresWsvQuery::getRolePermissions(const std::string &role_name) {
+      // TODO: implement
+      return nonstd::nullopt;
+    };
+
+    nonstd::optional<std::vector<std::string>> PostgresWsvQuery::getRoles() {
+      // TODO: implement
+      return nonstd::nullopt;
+    };
+
     optional<Account> PostgresWsvQuery::getAccount(const string &account_id) {
       pqxx::result result;
       try {
@@ -152,7 +176,9 @@ namespace iroha {
       auto row = result.at(0);
       row.at("account_id") >> asset.account_id;
       row.at("asset_id") >> asset.asset_id;
-      row.at("amount") >> asset.balance;
+      std::string amount_str;
+      row.at("amount") >> amount_str;
+      asset.balance = Amount::createFromString(amount_str).value();
       //      row.at("permissions") >> ?
       return asset;
     }

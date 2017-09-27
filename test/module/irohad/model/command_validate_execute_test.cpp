@@ -29,6 +29,11 @@
 #include "model/commands/transfer_asset.hpp"
 #include "model/execution/command_executor_factory.hpp"
 
+#include "model/commands/create_role.hpp"
+#include "model/commands/append_role.hpp"
+#include "model/commands/grant_permission.hpp"
+#include "model/commands/revoke_permission.hpp"
+
 using ::testing::Return;
 using ::testing::AtLeast;
 using ::testing::_;
@@ -41,8 +46,13 @@ using namespace iroha::model;
 
 class CommandValidateExecuteTest : public ::testing::Test {
  public:
+  CommandValidateExecuteTest() {
+    spdlog::set_level(spdlog::level::off);
+  }
 
   void SetUp() override {
+    spdlog::set_level(spdlog::level::off);
+
     factory = CommandExecutorFactory::create().value();
 
     wsv_query = std::make_shared<StrictMock<MockWsvQuery>>();
@@ -95,14 +105,14 @@ class AddAssetQuantityTest : public CommandValidateExecuteTest {
 
     add_asset_quantity = std::make_shared<AddAssetQuantity>();
     add_asset_quantity->account_id = account_id;
-    add_asset_quantity->amount.int_part = 3;
-    add_asset_quantity->amount.frac_part = 50;
+    Amount amount(350, 2);
+    add_asset_quantity->amount = amount;
     add_asset_quantity->asset_id = asset_id;
 
     command = add_asset_quantity;
   }
 
-  decltype(AccountAsset().balance) balance = 150ul;
+  decltype(AccountAsset().balance) balance = Amount(150ul, 2);
   Asset asset;
   AccountAsset wallet;
 
@@ -149,8 +159,8 @@ TEST_F(AddAssetQuantityTest, InvalidWhenNoPermission) {
 
 TEST_F(AddAssetQuantityTest, InvalidWhenZeroAmount) {
   // Amount is zero
-  add_asset_quantity->amount.int_part = 0;
-  add_asset_quantity->amount.frac_part = 0;
+  Amount amount(0);
+  add_asset_quantity->amount = amount;
 
   ASSERT_FALSE(validateAndExecute());
 }
@@ -158,7 +168,8 @@ TEST_F(AddAssetQuantityTest, InvalidWhenZeroAmount) {
 TEST_F(AddAssetQuantityTest, InvalidWhenWrongPrecision) {
   // Amount is with wrong precision (must be 2)
   creator.permissions.issue_assets = true;
-  add_asset_quantity->amount.frac_part = 300;
+  Amount amount(add_asset_quantity->amount.getIntValue(), 30);
+  add_asset_quantity->amount = amount;
 
   EXPECT_CALL(*wsv_query, getAsset(asset_id)).WillOnce(Return(asset));
 
@@ -207,6 +218,8 @@ class AddSignatoryTest : public CommandValidateExecuteTest {
 TEST_F(AddSignatoryTest, ValidWhenCreatorHasPermissions) {
   // Creator has permissions
   creator.permissions.add_signatory = true;
+  EXPECT_CALL(*wsv_command, insertSignatory(add_signatory->pubkey))
+      .WillOnce(Return(true));
   EXPECT_CALL(*wsv_command, insertAccountSignatory(add_signatory->account_id,
                                                    add_signatory->pubkey))
       .WillOnce(Return(true));
@@ -219,6 +232,8 @@ TEST_F(AddSignatoryTest, ValidWhenSameAccount) {
   creator.permissions.add_signatory = false;
   add_signatory->account_id = creator.account_id;
 
+  EXPECT_CALL(*wsv_command, insertSignatory(add_signatory->pubkey))
+      .WillOnce(Return(true));
   EXPECT_CALL(*wsv_command, insertAccountSignatory(add_signatory->account_id,
                                                    add_signatory->pubkey))
       .WillOnce(Return(true));
@@ -233,23 +248,13 @@ TEST_F(AddSignatoryTest, InvalidWhenNoPermissions) {
   ASSERT_FALSE(validateAndExecute());
 }
 
-TEST_F(AddSignatoryTest, InvalidWhenNoKey) {
-  // Trying to add nonexistent public key
-  creator.permissions.add_signatory = true;
-  add_signatory->pubkey.fill(0xF);
-
-  EXPECT_CALL(*wsv_command, insertAccountSignatory(add_signatory->account_id,
-                                                   add_signatory->pubkey))
-      .WillOnce(Return(false));
-
-  ASSERT_FALSE(validateAndExecute());
-}
-
 TEST_F(AddSignatoryTest, InvalidWhenNoAccount) {
   // Add to nonexistent account
   creator.permissions.add_signatory = true;
   add_signatory->account_id = "noacc";
 
+  EXPECT_CALL(*wsv_command, insertSignatory(add_signatory->pubkey))
+      .WillOnce(Return(true));
   EXPECT_CALL(*wsv_command, insertAccountSignatory(add_signatory->account_id,
                                                    add_signatory->pubkey))
       .WillOnce(Return(false));
@@ -262,8 +267,7 @@ TEST_F(AddSignatoryTest, InvalidWhenSameKey) {
   creator.permissions.add_signatory = true;
   add_signatory->pubkey.fill(2);
 
-  EXPECT_CALL(*wsv_command, insertAccountSignatory(add_signatory->account_id,
-                                                   add_signatory->pubkey))
+  EXPECT_CALL(*wsv_command, insertSignatory(add_signatory->pubkey))
       .WillOnce(Return(false));
 
   ASSERT_FALSE(validateAndExecute());
@@ -396,6 +400,13 @@ class RemoveSignatoryTest : public CommandValidateExecuteTest {
   void SetUp() override {
     CommandValidateExecuteTest::SetUp();
 
+    ed25519::pubkey_t creator_key, account_key;
+    creator_key.fill(0x1);
+    account_key.fill(0x2);
+
+    account_pubkeys = {account_key};
+    many_pubkeys = {creator_key, account_key};
+
     remove_signatory = std::make_shared<RemoveSignatory>();
     remove_signatory->account_id = account_id;
     remove_signatory->pubkey.fill(1);
@@ -403,20 +414,48 @@ class RemoveSignatoryTest : public CommandValidateExecuteTest {
     command = remove_signatory;
   }
 
+  std::vector<ed25519::pubkey_t> account_pubkeys;
+  std::vector<ed25519::pubkey_t> many_pubkeys;
   std::shared_ptr<RemoveSignatory> remove_signatory;
 };
 
-TEST_F(RemoveSignatoryTest, ValidWhenCreatorHasPermissions) {
+TEST_F(RemoveSignatoryTest, ValidWhenMultipleKeys) {
   // Creator is admin
   creator.permissions.remove_signatory = true;
 
   EXPECT_CALL(*wsv_query, getAccount(remove_signatory->account_id))
       .WillOnce(Return(account));
+
+  EXPECT_CALL(*wsv_query, getSignatories(remove_signatory->account_id))
+      .WillOnce(Return(many_pubkeys));
+
   EXPECT_CALL(*wsv_command, deleteAccountSignatory(remove_signatory->account_id,
                                                    remove_signatory->pubkey))
       .WillOnce(Return(true));
+  EXPECT_CALL(*wsv_command, deleteSignatory(remove_signatory->pubkey))
+      .WillOnce(Return(true));
 
   ASSERT_TRUE(validateAndExecute());
+}
+
+TEST_F(RemoveSignatoryTest, InvalidWhenSingleKey) {
+  // Creator is admin
+  creator.permissions.remove_signatory = true;
+
+  EXPECT_CALL(*wsv_query, getAccount(remove_signatory->account_id))
+      .WillOnce(Return(account));
+
+  EXPECT_CALL(*wsv_query, getSignatories(remove_signatory->account_id))
+      .WillOnce(Return(account_pubkeys));
+
+  // delete methods must not be called because the account quorum is 1.
+  EXPECT_CALL(*wsv_command, deleteAccountSignatory(remove_signatory->account_id,
+                                                   remove_signatory->pubkey))
+      .Times(0);
+  EXPECT_CALL(*wsv_command, deleteSignatory(remove_signatory->pubkey))
+      .Times(0);
+
+  ASSERT_FALSE(validateAndExecute());
 }
 
 TEST_F(RemoveSignatoryTest, InvalidWhenNoPermissions) {
@@ -433,9 +472,9 @@ TEST_F(RemoveSignatoryTest, InvalidWhenNoKey) {
 
   EXPECT_CALL(*wsv_query, getAccount(remove_signatory->account_id))
       .WillOnce(Return(account));
-  EXPECT_CALL(*wsv_command, deleteAccountSignatory(remove_signatory->account_id,
-                                                   remove_signatory->pubkey))
-      .WillOnce(Return(false));
+
+  EXPECT_CALL(*wsv_query, getSignatories(remove_signatory->account_id))
+      .WillOnce(Return(account_pubkeys));
 
   ASSERT_FALSE(validateAndExecute());
 }
@@ -565,13 +604,12 @@ class TransferAssetTest : public CommandValidateExecuteTest {
     transfer_asset->dest_account_id = account_id;
     transfer_asset->asset_id = asset_id;
     transfer_asset->description = description;
-    transfer_asset->amount.int_part = 1;
-    transfer_asset->amount.frac_part = 50;
-
+    Amount amount(150, 2);
+    transfer_asset->amount = amount;
     command = transfer_asset;
   }
 
-  decltype(AccountAsset().balance) balance = 150ul;
+  Amount balance = Amount(150, 2);
   Asset asset;
   AccountAsset src_wallet, dst_wallet;
 
@@ -660,8 +698,7 @@ TEST_F(TransferAssetTest, InvalidWhenNoSrcAccountAsset) {
 TEST_F(TransferAssetTest, InvalidWhenInsufficientFunds) {
   // No sufficient funds
   creator.permissions.can_transfer = true;
-  transfer_asset->amount.int_part = 1;
-  transfer_asset->amount.frac_part = 55;
+  Amount amount(155, 2);
 
   EXPECT_CALL(*wsv_query, getAccountAsset(transfer_asset->src_account_id,
                                           transfer_asset->asset_id))
@@ -677,7 +714,8 @@ TEST_F(TransferAssetTest, InvalidWhenInsufficientFunds) {
 TEST_F(TransferAssetTest, InvalidWhenWrongPrecision) {
   // Amount has wrong precision
   creator.permissions.can_transfer = true;
-  transfer_asset->amount.frac_part = 555;
+  Amount amount(transfer_asset->amount.getIntValue(), 30);
+  transfer_asset->amount = amount;
 
   EXPECT_CALL(*wsv_query, getAsset(transfer_asset->asset_id))
       .WillOnce(Return(asset));
@@ -696,8 +734,8 @@ TEST_F(TransferAssetTest, InvalidWhenDifferentCreator) {
 TEST_F(TransferAssetTest, InvalidWhenZeroAmount) {
   // Transfer zero assets
   creator.permissions.can_transfer = true;
-  transfer_asset->amount.int_part = 0;
-  transfer_asset->amount.frac_part = 0;
+  Amount amount(0, 2);
+  transfer_asset->amount = amount;
 
   ASSERT_FALSE(validateAndExecute());
 }
@@ -722,5 +760,68 @@ TEST_F(AddPeerTest, ValidCase) {
   // Valid case
   EXPECT_CALL(*wsv_command, insertPeer(_)).WillOnce(Return(true));
 
+  ASSERT_TRUE(validateAndExecute());
+}
+
+class CreateRoleTest: public CommandValidateExecuteTest {
+ public:
+  void SetUp() override {
+    CommandValidateExecuteTest::SetUp();
+    std::vector<std::string> perm = {"CanDoMagic"};
+    create_role = std::make_shared<CreateRole>("master", perm);
+    command = create_role;
+  }
+  std::shared_ptr<CreateRole> create_role;
+};
+
+TEST_F(CreateRoleTest, VadlidCase){
+  EXPECT_CALL(*wsv_command, insertRole(_)).WillOnce(Return(true));
+  EXPECT_CALL(*wsv_command, insertRolePermissions(_, _)).WillOnce(Return(true));
+  ASSERT_TRUE(validateAndExecute());
+}
+
+
+class AppendRoleTest: public CommandValidateExecuteTest {
+ public:
+  void SetUp() override {
+    CommandValidateExecuteTest::SetUp();
+    exact_command = std::make_shared<AppendRole>("yoda","master");
+    command = exact_command;
+  }
+  std::shared_ptr<AppendRole> exact_command;
+};
+
+TEST_F(AppendRoleTest, VadlidCase){
+  EXPECT_CALL(*wsv_command, insertAccountRole(_, _)).WillOnce(Return(true));
+  ASSERT_TRUE(validateAndExecute());
+}
+
+class GrantPermissionTest: public CommandValidateExecuteTest {
+ public:
+  void SetUp() override {
+    CommandValidateExecuteTest::SetUp();
+    exact_command = std::make_shared<GrantPermission>("yoda","can_teach");
+    command = exact_command;
+  }
+  std::shared_ptr<GrantPermission> exact_command;
+};
+
+TEST_F(GrantPermissionTest, VadlidCase){
+  EXPECT_CALL(*wsv_command, insertAccountGrantablePermission(_, _, _)).WillOnce(Return(true));
+  ASSERT_TRUE(validateAndExecute());
+}
+
+class RevokePermissionTest: public CommandValidateExecuteTest {
+ public:
+  void SetUp() override {
+    CommandValidateExecuteTest::SetUp();
+    exact_command = std::make_shared<RevokePermission>("yoda","can_teach");
+    command = exact_command;
+  }
+  std::shared_ptr<RevokePermission> exact_command;
+};
+
+TEST_F(RevokePermissionTest, VadlidCase){
+  EXPECT_CALL(*wsv_command, deleteAccountGrantablePermission(_, _, _)).WillOnce(Return(true));
   ASSERT_TRUE(validateAndExecute());
 }

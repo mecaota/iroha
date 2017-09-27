@@ -15,26 +15,21 @@
  * limitations under the License.
  */
 
-#ifndef IROHA_COMMAND_HPP
-#define IROHA_COMMAND_HPP
+#ifndef IROHA_PB_COMMON_HPP
+#define IROHA_PB_COMMON_HPP
 
-#include <ametsuchi/wsv_command.hpp>
-#include <ametsuchi/wsv_query.hpp>
-#include <model/account.hpp>
+#include "commands.pb.h"
+#include "amount/amount.hpp"
 
 namespace iroha {
   namespace model {
-    /**
-     * Abstract Command Model
-     */
-    struct Command {
-      virtual ~Command() = default;
+    namespace converters {
 
-      virtual bool operator==(const Command& rhs) const = 0;
+      // amount
+      protocol::Amount serializeAmount(iroha::Amount iroha_amount);
+      iroha::Amount deserializeAmount(protocol::Amount pb_amount);
+    }
+  }
+}
 
-      virtual bool operator!=(const Command& rhs) const;
-    };
-  }  // namespace model
-}  // namespace iroha
-
-#endif  // IROHA_COMMAND_HPP
+#endif  // IROHA_PB_COMMON_HPP

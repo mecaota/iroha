@@ -26,6 +26,15 @@ namespace iroha {
     class PostgresWsvCommand : public WsvCommand {
      public:
       explicit PostgresWsvCommand(pqxx::nontransaction &transaction);
+      bool insertRole(const std::string &role_name) override;
+
+      bool insertAccountRole(const std::string &account_id,
+                             const std::string &role_name) override;
+
+      bool insertRolePermissions(
+          const std::string &role_id,
+          const std::vector<std::string> &permissions) override;
+
       bool insertAccount(const model::Account &account) override;
       bool updateAccount(const model::Account &account) override;
       bool insertAsset(const model::Asset &asset) override;
@@ -35,9 +44,17 @@ namespace iroha {
                                   const ed25519::pubkey_t &signatory) override;
       bool deleteAccountSignatory(const std::string &account_id,
                                   const ed25519::pubkey_t &signatory) override;
+      bool deleteSignatory(const ed25519::pubkey_t &signatory) override;
       bool insertPeer(const model::Peer &peer) override;
       bool deletePeer(const model::Peer &peer) override;
       bool insertDomain(const model::Domain &domain) override;
+      bool insertAccountGrantablePermission(
+          const std::string &permittee_account_id,
+          const std::string &account_id, const std::string &permission_id) override;
+
+      bool deleteAccountGrantablePermission(
+          const std::string &permittee_account_id,
+          const std::string &account_id, const std::string &permission_id) override;
 
      private:
       pqxx::nontransaction &transaction_;

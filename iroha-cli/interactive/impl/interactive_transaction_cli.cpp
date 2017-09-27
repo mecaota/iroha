@@ -17,15 +17,21 @@
 
 #include "interactive/interactive_transaction_cli.hpp"
 #include <fstream>
-#include "client.hpp"
-#include "grpc_response_handler.hpp"
 #include "model/converters/json_common.hpp"
 #include "model/converters/json_transaction_factory.hpp"
 #include "model/generators/transaction_generator.hpp"
 
+#include <chrono>
+#include "client.hpp"
+#include "grpc_response_handler.hpp"
+#include "model/commands/append_role.hpp"
+#include "model/commands/create_role.hpp"
+#include "model/commands/grant_permission.hpp"
+#include "model/commands/revoke_permission.hpp"
 #include "parser/parser.hpp"
 
 using namespace std::chrono_literals;
+using namespace iroha::model;
 
 namespace iroha_cli {
   namespace interactive {
@@ -42,19 +48,26 @@ namespace iroha_cli {
           {SET_PERM, "Set Permissions to Account"},
           {SET_QUO, "Set Account Quorum"},
           {SUB_ASSET_QTY, "Subtract  Assets Quantity from Account"},
-          {TRAN_ASSET, "Transfer Assets"}};
+          {TRAN_ASSET, "Transfer Assets"},
+          {CREATE_ROLE, "Create new role"},
+          {APPEND_ROLE, "Add new role to account"},
+          {GRANT_PERM, "Grant permission over your account"},
+          {REVOKE_PERM, "Revoke permission from account"}
+      };
 
       const auto acc_id = "Account Id";
       const auto ast_id = "Asset Id";
       const auto dom_id = "Domain Id";
       const auto ammout_a = "Amount to add (integer part)";
-      const auto ammout_b = "Amount to add (fractional part)";
+      const auto ammout_b = "Amount to add (precision)";
       const auto peer_id = "Full address of a peer";
       const auto pub_key = "Public Key";
       const auto acc_name = "Account Name";
       const auto ast_name = "Asset name";
       const auto ast_precision = "Asset precision";
       const auto quorum = "Quorum";
+      const auto role = "Role name";
+      const auto perm = "Permission name";
 
       command_params_descriptions_ = {
           {ADD_ASSET_QTY, {acc_id, ast_id, ammout_a, ammout_b}},
@@ -70,7 +83,10 @@ namespace iroha_cli {
           {TRAN_ASSET,
            {std::string("Src") + acc_id, std::string("Dest") + acc_id, ast_id,
             ammout_a, ammout_b}},
-
+          {CREATE_ROLE, {role}},
+          {APPEND_ROLE, {acc_id, role}},
+          {GRANT_PERM, {acc_id, perm}},
+          {REVOKE_PERM, {acc_id, perm}}
       };
 
       command_handlers_ = {
@@ -85,7 +101,12 @@ namespace iroha_cli {
           {SET_QUO, &InteractiveTransactionCli::parseSetQuorum},
           {SUB_ASSET_QTY,
            &InteractiveTransactionCli::parseSubtractAssetQuantity},
-          {TRAN_ASSET, &InteractiveTransactionCli::parseTransferAsset}};
+          {TRAN_ASSET, &InteractiveTransactionCli::parseTransferAsset},
+          {CREATE_ROLE, &InteractiveTransactionCli::parseCreateRole},
+          {APPEND_ROLE, &InteractiveTransactionCli::parseAppendRole},
+          {GRANT_PERM, &InteractiveTransactionCli::parseGrantPermission},
+          {REVOKE_PERM, &InteractiveTransactionCli::parseGrantPermission}
+      };
 
       commands_menu_ = formMenu(command_handlers_, command_params_descriptions_,
                                 commands_description_map_);
@@ -113,7 +134,8 @@ namespace iroha_cli {
           {SAVE_CODE, &InteractiveTransactionCli::parseSaveFile},
           {SEND_CODE, &InteractiveTransactionCli::parseSendToIroha},
           {ADD_CMD, &InteractiveTransactionCli::parseAddCommand},
-          {BACK_CODE, &InteractiveTransactionCli::parseGoBack}};
+          {BACK_CODE, &InteractiveTransactionCli::parseGoBack}
+      };
 
       result_menu_ = formMenu(result_handlers_, result_params_descriptions,
                               result_desciption);
@@ -169,19 +191,56 @@ namespace iroha_cli {
     }
 
     std::shared_ptr<iroha::model::Command>
+    InteractiveTransactionCli::parseCreateRole(
+        std::vector<std::string> params) {
+      // TODO: implement scheme on working with permissions
+      auto role = params[0];
+      std::vector<std::string> perms  = {};
+      return std::make_shared<CreateRole>(role, perms);
+    }
+
+    std::shared_ptr<iroha::model::Command>
+    InteractiveTransactionCli::parseAppendRole(
+        std::vector<std::string> params) {
+      auto acc_id = params[0];
+      auto role = params[1];
+      return std::make_shared<AppendRole>(acc_id, role);
+    }
+
+    std::shared_ptr<iroha::model::Command>
+    InteractiveTransactionCli::parseGrantPermission(
+        std::vector<std::string> params) {
+      auto acc_id = params[0];
+      auto permission = params[1];
+      return std::make_shared<GrantPermission>(acc_id, permission);
+    }
+
+    std::shared_ptr<iroha::model::Command>
+    InteractiveTransactionCli::parseRevokePermission(
+        std::vector<std::string> params) {
+      auto acc_id = params[0];
+      auto permission = params[1];
+      return std::make_shared<RevokePermission>(acc_id, permission);
+    }
+
+    std::shared_ptr<iroha::model::Command>
     InteractiveTransactionCli::parseAddAssetQuantity(
         std::vector<std::string> params) {
       auto account_id = params[0];
       auto asset_id = params[1];
-      iroha::Amount amount;
-      auto val_int = parser::parseValue<uint64_t >(params[2]);
-      auto val_frac = parser::parseValue<uint64_t>(params[3]);
-      if (not val_int.has_value() || not val_frac.has_value()) {
+      auto val_int =
+          parser::parseValue<boost::multiprecision::uint256_t>(params[2]);
+      auto precision = parser::parseValue<uint32_t>(params[3]);
+      if (not val_int.has_value() || not precision.has_value()) {
         std::cout << "Wrong format for amount" << std::endl;
         return nullptr;
       }
-      amount.int_part = val_int.value();
-      amount.frac_part = val_frac.value();
+      if (precision.value() > 255) {
+        std::cout << "Too big precision (should be less than 256)" << std::endl;
+        return nullptr;
+      }
+      std::cout << val_int.value() << " " << precision.value() << std::endl;
+      iroha::Amount amount(val_int.value(), precision.value());
       return generator_.generateAddAssetQuantity(account_id, asset_id, amount);
     }
 
@@ -282,15 +341,14 @@ namespace iroha_cli {
       auto src_account_id = params[0];
       auto dest_account_id = params[1];
       auto asset_id = params[2];
-      iroha::Amount amount;
-      auto val_int = parser::parseValue<uint64_t>(params[3]);
-      auto val_frac = parser::parseValue<uint64_t>(params[4]);
-      if (not val_int.has_value() || not val_frac.has_value()) {
+      auto val_int =
+          parser::parseValue<boost::multiprecision::uint256_t>(params[3]);
+      auto precision = parser::parseValue<uint8_t>(params[4]);
+      if (not val_int.has_value() || not precision.has_value()) {
         std::cout << "Wrong format for amount" << std::endl;
         return nullptr;
       }
-      amount.int_part = val_int.value();
-      amount.frac_part = val_frac.value();
+      iroha::Amount amount(val_int.value(), precision.value());
       return generator_.generateTransferAsset(src_account_id, dest_account_id,
                                               asset_id, amount);
     }

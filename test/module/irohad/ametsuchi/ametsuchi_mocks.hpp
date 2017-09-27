@@ -31,6 +31,12 @@ namespace iroha {
   namespace ametsuchi {
     class MockWsvQuery : public WsvQuery {
      public:
+      MOCK_METHOD1(getAccountRoles, nonstd::optional<std::vector<std::string>>(
+                                        const std::string &account_id));
+      MOCK_METHOD1(getRolePermissions,
+                   nonstd::optional<std::vector<std::string>>(
+                       const std::string &role_name));
+      MOCK_METHOD0(getRoles, nonstd::optional<std::vector<std::string>>());
       MOCK_METHOD1(getAccount, nonstd::optional<model::Account>(
                                    const std::string &account_id));
       MOCK_METHOD1(getSignatories,
@@ -42,15 +48,36 @@ namespace iroha {
                                         const std::string &account_id,
                                         const std::string &asset_id));
       MOCK_METHOD0(getPeers, nonstd::optional<std::vector<model::Peer>>());
+      MOCK_METHOD3(hasAccountGrantablePermission,
+                   bool(const std::string &permitee_account_id,
+                       const std::string &account_id,
+                       const std::string &permission_id));
     };
 
     class MockWsvCommand : public WsvCommand {
      public:
+      MOCK_METHOD1(insertRole, bool(const std::string &role_name));
+      MOCK_METHOD2(insertAccountRole, bool(const std::string &account_id,
+                                           const std::string &role_name));
+      MOCK_METHOD2(insertRolePermissions,
+                   bool(const std::string &role_id,
+                        const std::vector<std::string> &permissions));
+
+      MOCK_METHOD3(insertAccountGrantablePermission,
+                   bool(const std::string &permittee_account_id,
+                        const std::string &account_id,
+                        const std::string &permission_id));
+
+      MOCK_METHOD3(deleteAccountGrantablePermission,
+                   bool(const std::string &permittee_account_id,
+                        const std::string &account_id,
+                        const std::string &permission_id));
       MOCK_METHOD1(insertAccount, bool(const model::Account &));
       MOCK_METHOD1(updateAccount, bool(const model::Account &));
       MOCK_METHOD1(insertAsset, bool(const model::Asset &));
       MOCK_METHOD1(upsertAccountAsset, bool(const model::AccountAsset &));
       MOCK_METHOD1(insertSignatory, bool(const ed25519::pubkey_t &));
+      MOCK_METHOD1(deleteSignatory, bool(const ed25519::pubkey_t &));
 
       MOCK_METHOD2(insertAccountSignatory,
                    bool(const std::string &, const ed25519::pubkey_t &));
