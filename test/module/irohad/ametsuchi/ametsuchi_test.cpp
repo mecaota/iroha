@@ -673,6 +673,16 @@ TEST_F(AmetsuchiTest, AddSignatoryTest) {
   }
 }
 
+void Output(Transaction tx) {
+  //      std::vector<Signature> signatures;
+  //      ts64_t created_ts;
+  //      std::string creator_account_id;
+  //      uint64_t tx_counter;
+  //      hash256_t tx_hash;
+  //      std::vector<std::shared_ptr<Command>> commands;
+  std::cout << "tx: " << tx.creator_account_id << "\n";
+}
+
 TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
   HashProviderImpl hashProvider;
 
@@ -854,6 +864,9 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
           ->getAccountAssetsTransactionsWithPager(user1id, {asset1id},
                                                   iroha::hash256_t{}, 0)
           .subscribe([&passed](auto tx) {
+            std::cout << "----------\n";
+            Output(tx);
+            std::cout << "----------\n";
             (void)tx;  // avoid from warning unused variable.
             passed = true;
           });
@@ -867,12 +880,14 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
       blocks
           ->getAccountAssetsTransactionsWithPager(user1id, {asset1id},
                                                   iroha::hash256_t{}, 1)
-          .subscribe([&tx_response](auto tx) { tx_response = tx; });
+          .subscribe([&tx_response](auto tx) { std::cout << "ok\n";Output(tx); tx_response = tx; });
       // Then, returns the Top tx that meets an asset operation related to
       // Alice.
-      ASSERT_EQ(std::dynamic_pointer_cast<TransferAsset>(tx6.commands[0])
-                    ->description,
-                "[Tx 6] Alice -> Bob");
+      Output(tx6);
+      Output(tx_response);
+      ASSERT_EQ("[Tx 6] Alice -> Bob",
+                std::dynamic_pointer_cast<TransferAsset>(tx6.commands[0])
+                    ->description);
       ASSERT_EQ(tx6, tx_response);
     }
 
@@ -885,13 +900,13 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
           .subscribe([&tx_responses](auto tx) { tx_responses.push_back(tx); });
       // Then, returns 2 Top txs that meet asset operations related to Alice.
       ASSERT_EQ(2, tx_responses.size());
-      ASSERT_EQ(std::dynamic_pointer_cast<TransferAsset>(tx6.commands[0])
-                    ->description,
-                "[Tx 6] Alice -> Bob");
+      ASSERT_EQ("[Tx 6] Alice -> Bob",
+                std::dynamic_pointer_cast<TransferAsset>(tx6.commands[0])
+                    ->description);
       ASSERT_EQ(tx6, tx_responses[0]);
-      ASSERT_EQ(std::dynamic_pointer_cast<TransferAsset>(tx5.commands[0])
-                    ->description,
-                "[Tx 5] Charlie -> Alice");
+      ASSERT_EQ("[Tx 5] Charlie -> Alice",
+                std::dynamic_pointer_cast<TransferAsset>(tx5.commands[0])
+                    ->description);
       ASSERT_EQ(tx5, tx_responses[1]);
     }
 
@@ -905,17 +920,17 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
           .subscribe([&tx_responses](auto tx) { tx_responses.push_back(tx); });
       // Then, returns all txs that meet asset operations related to Alice.
       ASSERT_EQ(4, tx_responses.size());
-      ASSERT_EQ(std::dynamic_pointer_cast<TransferAsset>(tx6.commands[0])
-                    ->description,
-                "[Tx 6] Alice -> Bob");
+      ASSERT_EQ("[Tx 6] Alice -> Bob",
+                std::dynamic_pointer_cast<TransferAsset>(tx6.commands[0])
+                    ->description);
       ASSERT_EQ(tx6, tx_responses[0]);
-      ASSERT_EQ(std::dynamic_pointer_cast<TransferAsset>(tx5.commands[0])
-                    ->description,
-                "[Tx 5] Charlie -> Alice");
+      ASSERT_EQ("[Tx 5] Charlie -> Alice",
+                std::dynamic_pointer_cast<TransferAsset>(tx5.commands[0])
+                    ->description);
       ASSERT_EQ(tx5, tx_responses[1]);
-      ASSERT_EQ(std::dynamic_pointer_cast<TransferAsset>(tx3.commands[0])
-                    ->description,
-                "[Tx 3] Alice -> Bob");
+      ASSERT_EQ("[Tx 3] Alice -> Bob",
+                std::dynamic_pointer_cast<TransferAsset>(tx3.commands[0])
+                    ->description);
       ASSERT_EQ(tx3, tx_responses[2]);
       ASSERT_TRUE(std::dynamic_pointer_cast<AddAssetQuantity>(tx2.commands[0]));
       ASSERT_EQ(tx2, tx_responses[3]);

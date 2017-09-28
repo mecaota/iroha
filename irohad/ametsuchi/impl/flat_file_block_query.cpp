@@ -118,10 +118,11 @@ namespace iroha {
     FlatFileBlockQuery::getAccountAssetsTransactionsWithPager(
         std::string account_id, std::vector<std::string> assets_id,
         iroha::hash256_t tx_hash, size_t limit) {
+      using iroha::model::TransferAsset;
+      using iroha::model::AddAssetQuantity;
       auto asset_operations = [assets_id, account_id](auto const& tx) {
         for (auto const& c : tx.commands) {
-          if (auto p =
-                  std::dynamic_pointer_cast<iroha::model::TransferAsset>(c)) {
+          if (auto p = std::dynamic_pointer_cast<TransferAsset>(c)) {
             if (std::find(assets_id.begin(), assets_id.end(), p->asset_id)
                     != assets_id.end()
                 and (p->src_account_id == account_id
@@ -129,9 +130,7 @@ namespace iroha {
               return true;
             }
           }
-          if (auto p =
-                  std::dynamic_pointer_cast<iroha::model::AddAssetQuantity>(
-                      c)) {
+          if (auto p = std::dynamic_pointer_cast<AddAssetQuantity>(c)) {
             if (std::find(assets_id.begin(), assets_id.end(), p->asset_id)
                     != assets_id.end()
                 and (p->account_id == account_id)) {
@@ -144,13 +143,16 @@ namespace iroha {
       return getBlocksFrom(1)
           .flat_map([](auto block) {
             return rxcpp::observable<>::iterate(block.transactions);
-          })
-          .take_while(
-              [tx_hash](auto const& tx) { return tx.tx_hash != tx_hash; })
+          });
+//          .take_while([tx_hash](auto const& tx) {
+//            return tx.tx_hash != tx_hash;
+//          })  // if no matching with tx_hash(e.g. empty), nothing to be
+              // filtered.
+        /*
           .filter([tx_hash, asset_operations](auto const& tx) {
             return asset_operations(tx);
           })
-          .take_last(limit);  // TODO: size check
+          .take_last(limit);*/  // TODO: size check
       // TODO: reverse
     }
   }  // namespace ametsuchi
