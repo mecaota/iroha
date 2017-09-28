@@ -109,6 +109,7 @@ void Irohad::run() {
   auto peer_address = wsv->getLedgerPeers().value().at(peer_number_).address;
 
   // Ordering gate
+
   auto ordering_gate = ordering_init.initOrderingGate(wsv, loop, 10, 5000);
   log_->info("[Init] => init ordering gate - [{}]",
              logger::logBool(ordering_gate));
@@ -160,7 +161,7 @@ void Irohad::run() {
   builder.AddListeningPort(peer_address, grpc::InsecureServerCredentials(),
                            &port);
   builder.RegisterService(ordering_init.ordering_gate_transport.get());
-  builder.RegisterService(ordering_init.ordering_service.get());
+  builder.RegisterService(ordering_init.ordering_service_transport.get());
   builder.RegisterService(yac_init.consensus_network.get());
   builder.RegisterService(loader_init.service.get());
   internal_server = builder.BuildAndStart();

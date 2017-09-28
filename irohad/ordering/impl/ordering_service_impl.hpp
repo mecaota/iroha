@@ -20,6 +20,7 @@
 
 #include <tbb/concurrent_queue.h>
 #include <memory>
+#include <network/ordering_service_transport.hpp>
 #include <unordered_map>
 #include <uvw.hpp>
 #include "ametsuchi/peer_query.hpp"
@@ -39,30 +40,25 @@ namespace iroha {
      * @param delay_milliseconds timer delay
      * @param max_size proposal size
      */
-    class OrderingServiceImpl
-        : public proto::OrderingService::Service,
-          public uvw::Emitter<OrderingServiceImpl>,
-          network::AsyncGrpcClient<google::protobuf::Empty> {
+    class OrderingServiceImpl : public uvw::Emitter<OrderingServiceImpl>,
+                                public network::OrderingServiceNotification {
      public:
       OrderingServiceImpl(
           std::shared_ptr<ametsuchi::PeerQuery> wsv, size_t max_size,
           size_t delay_milliseconds,
+          std::shared_ptr<network::OrderingServiceTransport> transport,
           std::shared_ptr<uvw::Loop> loop = uvw::Loop::getDefault());
 
-      grpc::Status SendTransaction(
-          ::grpc::ServerContext *context, const protocol::Transaction *request,
-          ::google::protobuf::Empty *response) override;
-
-      ~OrderingServiceImpl() override;
-
-     private:
       /**
        * Process transaction received from network
        * Enqueues transaction and publishes corresponding event
        * @param transaction
        */
-      void handleTransaction(model::Transaction &&transaction);
+      void onTransaction(model::Transaction tx) override;
 
+      ~OrderingServiceImpl() override;
+
+     private:
       /**
        * Collect transactions from queue
        * Passes the generated proposal to publishProposal
@@ -78,7 +74,6 @@ namespace iroha {
       /**
        * Method update peers for sending proposal
        */
-      void preparePeersForProposalRound();
 
       std::shared_ptr<uvw::Loop> loop_;
       std::shared_ptr<uvw::TimerHandle> timer_;
@@ -86,9 +81,7 @@ namespace iroha {
 
       model::converters::PbTransactionFactory factory_;
 
-      std::unordered_map<
-          std::string, std::unique_ptr<proto::OrderingGateTransportGrpc::Stub>>
-          peers_;
+      std::shared_ptr<network::OrderingServiceTransport> transport_;
 
       tbb::concurrent_queue<model::Transaction> queue_;
 
