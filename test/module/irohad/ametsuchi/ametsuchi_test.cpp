@@ -91,8 +91,8 @@ TEST_F(AmetsuchiTest, SampleTest) {
   }
 
   {
-    auto account = wsv->getAccount(createAccount.account_name + "@" +
-                                       createAccount.domain_id);
+    auto account = wsv->getAccount(createAccount.account_name + "@"
+                                   + createAccount.domain_id);
     ASSERT_TRUE(account);
     ASSERT_EQ(account->account_id,
               createAccount.account_name + "@" + createAccount.domain_id);
@@ -166,10 +166,10 @@ TEST_F(AmetsuchiTest, SampleTest) {
   blocks->getAccountTransactions("admin2").subscribe(
       [](auto tx) { EXPECT_EQ(tx.commands.size(), 4); });
 
-  blocks->getAccountAssetTransactions("user1@ru", "RUB#ru").subscribe(
-      [](auto tx) { EXPECT_EQ(tx.commands.size(), 1); });
-  blocks->getAccountAssetTransactions("user2@ru", "RUB#ru").subscribe(
-      [](auto tx) { EXPECT_EQ(tx.commands.size(), 1); });
+  blocks->getAccountAssetTransactions("user1@ru", "RUB#ru")
+      .subscribe([](auto tx) { EXPECT_EQ(tx.commands.size(), 1); });
+  blocks->getAccountAssetTransactions("user2@ru", "RUB#ru")
+      .subscribe([](auto tx) { EXPECT_EQ(tx.commands.size(), 1); });
 }
 
 TEST_F(AmetsuchiTest, PeerTest) {
@@ -203,7 +203,8 @@ TEST_F(AmetsuchiTest, PeerTest) {
 TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
   HashProviderImpl hashProvider;
 
-  auto storage = StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
+  auto storage =
+      StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
   ASSERT_TRUE(storage);
   auto wsv = storage->getWsvQuery();
   auto blocks = storage->getBlockQuery();
@@ -390,15 +391,16 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
   }
 
   // Block store tests
-  blocks->getBlocks(1, 3).subscribe([block1hash, block2hash, block3hash](auto eachBlock) {
-    if (eachBlock.height == 1) {
-      EXPECT_EQ(eachBlock.hash, block1hash);
-    } else if (eachBlock.height == 2) {
-      EXPECT_EQ(eachBlock.hash, block2hash);
-    } else if (eachBlock.height == 3) {
-      EXPECT_EQ(eachBlock.hash, block3hash);
-    }
-  });
+  blocks->getBlocks(1, 3).subscribe(
+      [block1hash, block2hash, block3hash](auto eachBlock) {
+        if (eachBlock.height == 1) {
+          EXPECT_EQ(eachBlock.hash, block1hash);
+        } else if (eachBlock.height == 2) {
+          EXPECT_EQ(eachBlock.hash, block2hash);
+        } else if (eachBlock.height == 3) {
+          EXPECT_EQ(eachBlock.hash, block3hash);
+        }
+      });
 
   blocks->getAccountTransactions(admin).subscribe(
       [](auto tx) { EXPECT_EQ(tx.commands.size(), 8); });
@@ -412,24 +414,31 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
   // (user1 -> user2 # asset1)
   // (user2 -> user3 # asset2)
   // (user2 -> user1 # asset2)
-  blocks->getAccountAssetTransactions(user1id, asset1id).subscribe(
-      [](auto tx) { EXPECT_EQ(tx.commands.size(), 1); });
-  blocks->getAccountAssetTransactions(user2id, asset1id).subscribe(
-      [](auto tx) { EXPECT_EQ(tx.commands.size(), 1); });
-  blocks->getAccountAssetTransactions(user3id, asset1id).subscribe(
-      [](auto tx) { EXPECT_EQ(tx.commands.size(), 0); });
-  blocks->getAccountAssetTransactions(user1id, asset2id).subscribe(
-      [](auto tx) { EXPECT_EQ(tx.commands.size(), 1); });
-  blocks->getAccountAssetTransactions(user2id, asset2id).subscribe(
-      [](auto tx) { EXPECT_EQ(tx.commands.size(), 2); });
-  blocks->getAccountAssetTransactions(user3id, asset2id).subscribe(
-      [](auto tx) { EXPECT_EQ(tx.commands.size(), 1); });
+  blocks->getAccountAssetTransactions(user1id, asset1id).subscribe([](auto tx) {
+    EXPECT_EQ(tx.commands.size(), 1);
+  });
+  blocks->getAccountAssetTransactions(user2id, asset1id).subscribe([](auto tx) {
+    EXPECT_EQ(tx.commands.size(), 1);
+  });
+  blocks->getAccountAssetTransactions(user3id, asset1id).subscribe([](auto tx) {
+    EXPECT_EQ(tx.commands.size(), 0);
+  });
+  blocks->getAccountAssetTransactions(user1id, asset2id).subscribe([](auto tx) {
+    EXPECT_EQ(tx.commands.size(), 1);
+  });
+  blocks->getAccountAssetTransactions(user2id, asset2id).subscribe([](auto tx) {
+    EXPECT_EQ(tx.commands.size(), 2);
+  });
+  blocks->getAccountAssetTransactions(user3id, asset2id).subscribe([](auto tx) {
+    EXPECT_EQ(tx.commands.size(), 1);
+  });
 }
 
 TEST_F(AmetsuchiTest, AddSignatoryTest) {
   HashProviderImpl hashProvider;
 
-  auto storage = StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
+  auto storage =
+      StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
   ASSERT_TRUE(storage);
   auto wsv = storage->getWsvQuery();
 
@@ -519,7 +528,7 @@ TEST_F(AmetsuchiTest, AddSignatoryTest) {
   createAccount = CreateAccount();
   createAccount.account_name = "user2";
   createAccount.domain_id = "domain";
-  createAccount.pubkey = pubkey1; // same as user1's pubkey1
+  createAccount.pubkey = pubkey1;  // same as user1's pubkey1
   txn.commands.push_back(std::make_shared<CreateAccount>(createAccount));
 
   block = Block();
@@ -664,15 +673,18 @@ TEST_F(AmetsuchiTest, AddSignatoryTest) {
   }
 }
 
-TEST_F(AmetsuchiTest, GetAccountTransactionsWithPagerTest) {
+TEST_F(AmetsuchiTest, GetAccountAssetTransactionsWithPagerTest) {
   HashProviderImpl hashProvider;
 
   auto storage =
-    StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
+      StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
   ASSERT_TRUE(storage);
   auto wsv = storage->getWsvQuery();
   auto blocks = storage->getBlockQuery();
 
+  const std::string admin = "admin";
+  const std::string maindomain = "maindomain";
+  const std::string adminid = "admin@maindomain";
   const std::string domain1name = "domain1";
   const std::string domain2name = "domain2";
   const std::string user1name = "alice";
@@ -682,16 +694,15 @@ TEST_F(AmetsuchiTest, GetAccountTransactionsWithPagerTest) {
   const std::string user1id = "alice@domain1";
   const std::string user2id = "bob@domain1";
   const std::string user3id = "charlie@domain1";
-  const std::string user4id = "eve@domain2";
 
   auto assign_dummy_tx_info = [&hashProvider](Transaction &txn) {
     txn.created_ts = 0;
-    txn.creator_account_id = "";
     txn.tx_counter = 1;
     txn.tx_hash = hashProvider.get_hash(txn);
   };
 
-  auto assign_dummy_block_info = [&hashProvider](Block &block, iroha::hash256_t prev_hash) {
+  auto assign_dummy_block_info = [&hashProvider](Block &block,
+                                                 iroha::hash256_t prev_hash) {
     block.created_ts = 0;
     block.height = 1;
     block.prev_hash.fill(0);
@@ -700,11 +711,13 @@ TEST_F(AmetsuchiTest, GetAccountTransactionsWithPagerTest) {
     hashProvider.get_hash(block);
   };
 
-  { //////////////////////////////////////////////////////////////////////////////////
+  {  //////////////////////////////////////////////////////////////////////////////////
     Block block;
     {
-      // Given Transaction 1 CreateDomain, CreateAccount alice@domain1, CreateAccount bob@domain1
+      // Given Transaction 1 CreateDomain, CreateAccount alice@domain1,
+      // CreateAccount bob@domain1
       Transaction txn;
+      txn.creator_account_id = adminid;
       txn.commands = {
         std::make_shared<CreateDomain>(domain1name),
         std::make_shared<CreateAccount>(user1name, domain1name, iroha::ed25519::pubkey_t{}),
@@ -716,24 +729,16 @@ TEST_F(AmetsuchiTest, GetAccountTransactionsWithPagerTest) {
     {
       // Given Transaction 2 CreateAccount charlie@domain1
       Transaction txn;
+      txn.creator_account_id = adminid;
       txn.commands = {
         std::make_shared<CreateAccount>(user3name, domain1name, iroha::ed25519::pubkey_t{})
       };
       assign_dummy_tx_info(txn);
       block.transactions.push_back(txn);
     }
-    {
-      // Given Transaction 3 CreateAccount eve@domain2
-      Transaction txn;
-      txn.commands = {
-        std::make_shared<CreateAccount>(user4name, domain2name, iroha::ed25519::pubkey_t{})
-      };
-      assign_dummy_tx_info(txn);
-      block.transactions.push_back(txn);
-    }
     assign_dummy_block_info(block, iroha::hash256_t{});
 
-    // When Storing into MutableStorage
+    // When storing block into MutableStorage
     auto ms = storage->createMutableStorage();
     ms->apply(block, [](const auto &blk, auto &query, const auto &top_hash) {
       return true;
@@ -744,20 +749,248 @@ TEST_F(AmetsuchiTest, GetAccountTransactionsWithPagerTest) {
   // Then Account alice@domain1 should be load.
   auto account1 = wsv->getAccount(user1id);
   ASSERT_TRUE(account1);
-  ASSERT_STREQ((user1name + "@" + domain1name).c_str(), account1->account_id.c_str());
+  ASSERT_STREQ((user1name + "@" + domain1name).c_str(),
+               account1->account_id.c_str());
 
   // Then Account bob@domain1 should be load.
   auto account2 = wsv->getAccount(user2id);
   ASSERT_TRUE(account2);
-  ASSERT_STREQ((user2name + "@" + domain1name).c_str(), account2->account_id.c_str());
+  ASSERT_STREQ((user2name + "@" + domain1name).c_str(),
+               account2->account_id.c_str());
 
   // Then Account charlie@domain1 should be load.
   auto account3 = wsv->getAccount(user3id);
   ASSERT_TRUE(account3);
-  ASSERT_STREQ((user3name + "@" + domain1name).c_str(), account3->account_id.c_str());
+  ASSERT_STREQ((user3name + "@" + domain1name).c_str(),
+               account3->account_id.c_str());
 
-  // Then Account eve@domain2 should be load.
-  ASSERT_TRUE(account4);
-  ASSERT_TRUE((user4name + "@" + domain2name).c_str(), account4->account_id.c_str());
+  const std::string asset1name = "irh";
+  const std::string asset1id = "irh@domain1";
+  const std::string asset2name = "moeka";
+  const std::string asset2id = "moeka@domain2";
 
+  iroha::hash256_t txh1, txh2, txh3, txh4, txh5;
+
+  {
+    Block block;
+    // Given Transaction 1: Admin applies CreateAsset irh@domain1, CreateAsset
+    // moeka@domain2
+    Transaction tx1;
+    tx1.creator_account_id = adminid;
+    tx1.commands = {
+      std::make_shared<CreateAsset>(asset1name, domain1name, 2),
+      std::make_shared<CreateAsset>(asset2name, domain2name, 0)
+    };
+    assign_dummy_tx_info(tx1);
+    block.transactions.push_back(tx1);
+    txh1 = hashProvider.get_hash(tx1);
+
+    // Given Transaction 2: Admin applies AddAssetQuantity with Alice's
+    // irh@domain1 and moeka@domain2 wallet.
+    Transaction tx2;
+    tx2.creator_account_id = adminid;
+    tx2.commands = {
+      std::make_shared<AddAssetQuantity>(user1name, asset1id, Amount(200, 0))
+      std::make_shared<AddAssetQuantity>(user2name, asset2id, Amount(200, 0))
+    };
+    assign_dummy_tx_info(tx2);
+    block.transactions.push_back(tx2);
+    txh2 = hashProvider.get_hash(tx2);
+
+    // Given Transaction 3: Alice applies TransferAsset irh@domain1 from Alice
+    // to Bob
+    Transaction tx3;
+    txn.creator_account_id = user1id;
+    txn.commands = {
+      std::make_shared<TransferAsset>(account1id, account2id, asset1id,
+                                      "[Tx 3] Alice -> Bob", Amount(200, 0))
+    };
+    assign_dummy_tx_info(tx3);
+    block.transactions.push_back(tx3);
+    txh3 = hashProvider.get_hash(tx3);
+
+    // Given Transaction 4: Bob applies TransferAsset irh@domain1 from Bob to
+    // Chalie
+    Transaction tx4;
+    txn.creator_account_id = user2id;
+    txn.commands = {
+      std::make_shared<TransferAsset>(
+        account2id, account3id, asset1id, "[Tx 4] Bob -> Charlie",
+        Amount(150, 0))
+    };
+    assign_dummy_tx_info(tx4);
+    block.transactions.push_back(tx4);
+    txh4 = hashProvider.get_hash(tx4);
+
+    // Given Transaction 5: Charlie applies TransferAsset irh@domain1 from
+    // Chalie to Alice.
+    Transaction tx5;
+    txn.creator_account_id = user3id;
+    txn.commands = {
+      std::make_shared<TransferAsset>(
+        account3id, account1id, asset1id, "[Tx 5] Charlie -> Alice",
+        Amount(100, 0))
+    };
+    assign_dummy_tx_info(tx5);
+    block.transactions.push_back(tx5);
+    txh5 = hashProvider.get_hash(tx5);
+
+    // Given Transaction 6: Alice applies TransferAsset irh@domain1 from Alice
+    // to Bob.
+    Transaction tx6;
+    txn.creator_account_id = user3id;
+    txn.commands = {
+      std::make_shared<TransferAsset>(account3id, account1id, asset1id,
+                                      "[Tx 6] Alice -> Bob", Amount(50, 0))
+    };
+    assign_dummy_tx_info(tx6);
+    block.transactions.push_back(tx6);
+    txh5 = hashProvider.get_hash(tx6);
+
+    assign_dummy_block_info(block, iroha::hash256_t{});
+
+    // When storing block into MutableStorage
+    auto ms = storage->createMutableStorage();
+    ms->apply(block, [](const auto &blk, auto &query, const auto &top_hash) {
+      return true;
+    });
+    storage->commit(std::move(ms));
+  }
+
+  {
+    bool passed = false;
+    // When, query empty hash with id: Alice, limit: 0.
+    blocks
+        ->getAccountAssetsTransactionsWithPager(account1id, {asset1id},
+                                                iroha::hash256_t{}, 0)
+        .subscribe([](auto tx) {
+          (void)tx;  // avoid from warning unused variable.
+          passed = true;
+        });
+    // Then returns null.
+    ASSERT_FALSE(passed);
+  }
+
+  {
+    model::Transaction tx_response;
+    // When, query empty hash with id: Alice, limit: 1.
+    blocks
+        ->getAccountAssetsTransactionsWithPager(account1id, {asset1id},
+                                                iroha::hash256_t{}, 1)
+        .subscribe([](auto tx) { tx_response = tx; });
+    // Then, returns the Top tx that meets an asset operation related to Alice.
+    ASSERT_EQ(tx6.description, "[Tx 6] Alice -> Bob");
+    ASSERT_EQ(tx6, tx_response);
+  }
+
+  {
+    std::vector<model::Transaction> tx_responses;
+    // When querying empty hash with id: Alice, limit: 2.
+    blocks
+        ->getAccountAssetsTransactionsWithPager(account1id, {asset1id},
+                                                iroha::hash256_t{}, 2)
+        .subscribe([](auto tx) { tx_responses.push_back(tx); });
+    // Then, returns 2 Top txs that meet asset operations related to Alice.
+    ASSERT_EQ(2, tx_responses.size());
+    ASSERT_EQ(tx6.description, "[Tx 6] Alice -> Bob");
+    ASSERT_EQ(tx6, tx_responses[0]);
+    ASSERT_EQ(tx5.description, "[Tx 5] Charlie -> Alice");
+    ASSERT_EQ(tx5, tx_responses[1]);
+  }
+
+  {
+    std::vector<model::Transaction> tx_responses;
+    // When querying empty hash with id: Alice, limit: 100 (over max acct asset
+    // txs).
+    blocks
+        ->getAccountAssetsTransactionsWithPager(account1id, {asset1id},
+                                                iroha::hash256_t{}, 100)
+        .subscribe([](auto tx) { tx_responses.push_back(tx); });
+    // Then, returns all txs that meet asset operations related to Alice.
+    ASSERT_EQ(4, tx_responses.size());
+    ASSERT_EQ(tx6.description, "[Tx 6] Alice -> Bob");
+    ASSERT_EQ(tx6, tx_responses[0]);
+    ASSERT_EQ(tx5.description, "[Tx 5] Charlie -> Alice");
+    ASSERT_EQ(tx5, tx_responses[1]);
+    ASSERT_EQ(tx3.description, "[Tx 3] Alice -> Bob");
+    ASSERT_EQ(tx3, tx_responses[2]);
+    ASSERT_EQ(std::dynamic_pointer_cast<AddAssetQuantity>(tx2.commnads[0]));
+    ASSERT_EQ(tx2, tx_responses[3]);
+  }
+
+  {
+    bool passed = false;
+    // When querying top Transaction 5 hash with id: Alice, limit: 0.
+    blocks
+        ->getAccountAssetsTransactionsWithPager(account1id, {asset1id}, txh5, 0)
+        .subscribe([](auto tx) {
+          (void)tx;  // avoid from warning unused variable.
+          passed = true;
+        });
+    // Then returns null.
+    ASSERT_FALSE(passed);
+  }
+
+  {
+    model::Transaction tx_response;
+    // When querying top Transaction 5 hash with id: Alice, limit: 1.
+    blocks
+        ->getAccountAssetsTransactionsWithPager(account1id, {asset1id}, txh4, 1)
+        .subscribe([](auto tx) { tx_response = tx; });
+    // Then returns the second Top most tx that meet Alice's irh@domain1 (txh4
+    // is excluded).
+    ASSERT_EQ(tx5, tx_response);
+  }
+  {
+    std::vector<model::Transaction> tx_responses;
+    // When querying top Transaction 5 hash with id: Alice, limit: 2.
+    blocks
+        ->getAccountAssetsTransactionsWithPager(account1id, {asset1id}, txh4,
+                                                100)
+        .subscribe([](auto tx) { tx_responses.push_back(tx); });
+    // Then returns all txs without a tx which txh4 has excluded, that are
+    // related to Alice's irh@domain1.
+    ASSERT_EQ(3, tx_responses.size());
+    ASSERT_EQ(tx5, tx_responses[0]);  // TransferAsset
+    ASSERT_EQ(tx3, tx_responses[1]);  // TrasnferAsset
+    ASSERT_EQ(tx2, tx_responses[2]);  // AddAssetQuantity
+  }
+
+  {
+    Block block;
+    // Given Transaction 1: includes AddAssetQuantity and TransferAsset with
+    // irrelevant commands.
+    Transaction tx1;
+    tx1.creator_account_id = adminid;
+    tx1.commands = {
+      // Given Transaction 2: includes AddAssetQuantity and TransferAsset
+      // with irrelevant commands.
+      std::make_shared<AddAssetQuantity>(asset1name, domain1name, 1000),
+      std::make_shared<AddAssetQuantity>(asset2name, domain2name, 1000),
+      std::make_shared<CreateAsset>("unfilteredasset", domain1name, 0),
+      std::make_shared<TransferAsset>(user1id, user2id, asset1id, Amount(200, 0))
+    };
+    assign_dummy_tx_info(tx1);
+    block.transactions.push_back(tx1);
+
+    assign_dummy_block_info(block, iroha::hash256_t{});
+
+    // When storing block into MutableStorage
+    auto ms = storage->createMutableStorage();
+    ms->apply(block, [](const auto &blk, auto &query, const auto &top_hash) {
+      return true;
+    });
+    storage->commit(std::move(ms));
+  }
+
+  {
+    // When query tx that has multiple assets from Top block.
+    Transaction tx_response;
+    blocks->getAccountAssetsTransactionWithPager(
+        account1id, {asset1name, asset2name}, iroha::hash256_t{}, 3)
+          .subscribe([](auto tx) { tx_response = tx; });
+
+    // Then, returns the tx.
+    ASSERT_EQ(tx1, tx_response);
+  }
 }
