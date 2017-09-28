@@ -70,7 +70,7 @@ namespace iroha {
        * @return observable of Model Transaction
        */
       virtual rxcpp::observable<model::Transaction>
-      GetAccountAssetsTransactionsWithPager(std::string account_id,
+      getAccountAssetsTransactionsWithPager(std::string account_id,
                                             std::vector<std::string> asset_id,
                                             iroha::hash256_t tx_hash,
                                             size_t limit) = 0;

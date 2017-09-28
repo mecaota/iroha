@@ -60,10 +60,13 @@ namespace iroha {
 
       TransferAsset(const std::string &src_account_id,
                     const std::string &dest_account_id,
-                    const std::string &asset_id, const Amount &amount)
+                    const std::string &asset_id,
+                    const Amount &amount,
+                    const std::string& description = "")
           : src_account_id(src_account_id),
             dest_account_id(dest_account_id),
             asset_id(asset_id),
+            description(description),
             amount(amount) {}
     };
   }  // namespace model

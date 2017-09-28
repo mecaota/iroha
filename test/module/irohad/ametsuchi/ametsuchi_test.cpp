@@ -596,7 +596,7 @@ TEST_F(AmetsuchiTest, AddSignatoryTest) {
     ASSERT_EQ(signatories1->size(), 1);
     ASSERT_EQ(signatories1->at(0), pubkey2);
 
-    // user2 still has pubkey1.
+    // user2 still has pubkey1.Amount
     auto signatories2 = wsv->getSignatories(user2id);
     ASSERT_TRUE(signatories2);
     ASSERT_EQ(signatories2->size(), 1);
@@ -718,11 +718,11 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
       // CreateAccount bob@domain1
       Transaction txn;
       txn.creator_account_id = adminid;
-      txn.commands = {
-        std::make_shared<CreateDomain>(domain1name),
-        std::make_shared<CreateAccount>(user1name, domain1name, iroha::ed25519::pubkey_t{}),
-        std::make_shared<CreateAccount>(user2name, domain1name, iroha::ed25519::pubkey_t{})
-      };
+      txn.commands = {std::make_shared<CreateDomain>(domain1name),
+                      std::make_shared<CreateAccount>(
+                          user1name, domain1name, iroha::ed25519::pubkey_t{}),
+                      std::make_shared<CreateAccount>(
+                          user2name, domain1name, iroha::ed25519::pubkey_t{})};
       assign_dummy_tx_info(txn);
       block.transactions.push_back(txn);
     }
@@ -730,9 +730,8 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
       // Given Transaction 2 CreateAccount charlie@domain1
       Transaction txn;
       txn.creator_account_id = adminid;
-      txn.commands = {
-        std::make_shared<CreateAccount>(user3name, domain1name, iroha::ed25519::pubkey_t{})
-      };
+      txn.commands = {std::make_shared<CreateAccount>(
+          user3name, domain1name, iroha::ed25519::pubkey_t{})};
       assign_dummy_tx_info(txn);
       block.transactions.push_back(txn);
     }
@@ -769,7 +768,7 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
   const std::string asset2name = "moeka";
   const std::string asset2id = "moeka@domain2";
 
-  iroha::hash256_t txh1, txh2, txh3, txh4, txh5;
+  iroha::hash256_t txh1, txh2, txh3, txh4, txh5, txh6;
 
   {
     Block block;
@@ -777,10 +776,8 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     // moeka@domain2
     Transaction tx1;
     tx1.creator_account_id = adminid;
-    tx1.commands = {
-      std::make_shared<CreateAsset>(asset1name, domain1name, 2),
-      std::make_shared<CreateAsset>(asset2name, domain2name, 0)
-    };
+    tx1.commands = {std::make_shared<CreateAsset>(asset1name, domain1name, 2),
+                    std::make_shared<CreateAsset>(asset2name, domain2name, 0)};
     assign_dummy_tx_info(tx1);
     block.transactions.push_back(tx1);
     txh1 = hashProvider.get_hash(tx1);
@@ -789,10 +786,10 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     // irh@domain1 and moeka@domain2 wallet.
     Transaction tx2;
     tx2.creator_account_id = adminid;
-    tx2.commands = {
-      std::make_shared<AddAssetQuantity>(user1name, asset1id, Amount(200, 0))
-      std::make_shared<AddAssetQuantity>(user2name, asset2id, Amount(200, 0))
-    };
+    tx2.commands = {std::make_shared<AddAssetQuantity>(user1name, asset1id,
+                                                       iroha::Amount(200, 0)),
+                    std::make_shared<AddAssetQuantity>(user2name, asset2id,
+                                                       iroha::Amount(200, 0))};
     assign_dummy_tx_info(tx2);
     block.transactions.push_back(tx2);
     txh2 = hashProvider.get_hash(tx2);
@@ -800,11 +797,10 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     // Given Transaction 3: Alice applies TransferAsset irh@domain1 from Alice
     // to Bob
     Transaction tx3;
-    txn.creator_account_id = user1id;
-    txn.commands = {
-      std::make_shared<TransferAsset>(account1id, account2id, asset1id,
-                                      "[Tx 3] Alice -> Bob", Amount(200, 0))
-    };
+    tx3.creator_account_id = user1id;
+    tx3.commands = {std::make_shared<TransferAsset>(user1id, user2id, asset1id,
+                                                    iroha::Amount(200, 0),
+                                                    "[Tx 3] Alice -> Bob")};
     assign_dummy_tx_info(tx3);
     block.transactions.push_back(tx3);
     txh3 = hashProvider.get_hash(tx3);
@@ -812,12 +808,10 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     // Given Transaction 4: Bob applies TransferAsset irh@domain1 from Bob to
     // Chalie
     Transaction tx4;
-    txn.creator_account_id = user2id;
-    txn.commands = {
-      std::make_shared<TransferAsset>(
-        account2id, account3id, asset1id, "[Tx 4] Bob -> Charlie",
-        Amount(150, 0))
-    };
+    tx4.creator_account_id = user2id;
+    tx4.commands = {std::make_shared<TransferAsset>(user2id, user3id, asset1id,
+                                                    iroha::Amount(150, 0),
+                                                    "[Tx 4] Bob -> Charlie")};
     assign_dummy_tx_info(tx4);
     block.transactions.push_back(tx4);
     txh4 = hashProvider.get_hash(tx4);
@@ -825,12 +819,10 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     // Given Transaction 5: Charlie applies TransferAsset irh@domain1 from
     // Chalie to Alice.
     Transaction tx5;
-    txn.creator_account_id = user3id;
-    txn.commands = {
-      std::make_shared<TransferAsset>(
-        account3id, account1id, asset1id, "[Tx 5] Charlie -> Alice",
-        Amount(100, 0))
-    };
+    tx5.creator_account_id = user3id;
+    tx5.commands = {std::make_shared<TransferAsset>(user3id, user1id, asset1id,
+                                                    iroha::Amount(100, 0),
+                                                    "[Tx 5] Charlie -> Alice")};
     assign_dummy_tx_info(tx5);
     block.transactions.push_back(tx5);
     txh5 = hashProvider.get_hash(tx5);
@@ -838,14 +830,13 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     // Given Transaction 6: Alice applies TransferAsset irh@domain1 from Alice
     // to Bob.
     Transaction tx6;
-    txn.creator_account_id = user3id;
-    txn.commands = {
-      std::make_shared<TransferAsset>(account3id, account1id, asset1id,
-                                      "[Tx 6] Alice -> Bob", Amount(50, 0))
-    };
+    tx6.creator_account_id = user3id;
+    tx6.commands = {std::make_shared<TransferAsset>(user3id, user1id, asset1id,
+                                                    iroha::Amount(50, 0),
+                                                    "[Tx 6] Alice -> Bob")};
     assign_dummy_tx_info(tx6);
     block.transactions.push_back(tx6);
-    txh5 = hashProvider.get_hash(tx6);
+    txh6 = hashProvider.get_hash(tx6);
 
     assign_dummy_block_info(block, iroha::hash256_t{});
 
@@ -855,105 +846,118 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
       return true;
     });
     storage->commit(std::move(ms));
-  }
 
-  {
-    bool passed = false;
-    // When, query empty hash with id: Alice, limit: 0.
-    blocks
-        ->getAccountAssetsTransactionsWithPager(account1id, {asset1id},
-                                                iroha::hash256_t{}, 0)
-        .subscribe([](auto tx) {
-          (void)tx;  // avoid from warning unused variable.
-          passed = true;
-        });
-    // Then returns null.
-    ASSERT_FALSE(passed);
-  }
+    {
+      bool passed = false;
+      // When, query empty hash with id: Alice, limit: 0.
+      blocks
+          ->getAccountAssetsTransactionsWithPager(user1id, {asset1id},
+                                                  iroha::hash256_t{}, 0)
+          .subscribe([&passed](auto tx) {
+            (void)tx;  // avoid from warning unused variable.
+            passed = true;
+          });
+      // Then returns null.
+      ASSERT_FALSE(passed);
+    }
 
-  {
-    model::Transaction tx_response;
-    // When, query empty hash with id: Alice, limit: 1.
-    blocks
-        ->getAccountAssetsTransactionsWithPager(account1id, {asset1id},
-                                                iroha::hash256_t{}, 1)
-        .subscribe([](auto tx) { tx_response = tx; });
-    // Then, returns the Top tx that meets an asset operation related to Alice.
-    ASSERT_EQ(tx6.description, "[Tx 6] Alice -> Bob");
-    ASSERT_EQ(tx6, tx_response);
-  }
+    {
+      Transaction tx_response;
+      // When, query empty hash with id: Alice, limit: 1.
+      blocks
+          ->getAccountAssetsTransactionsWithPager(user1id, {asset1id},
+                                                  iroha::hash256_t{}, 1)
+          .subscribe([&tx_response](auto tx) { tx_response = tx; });
+      // Then, returns the Top tx that meets an asset operation related to
+      // Alice.
+      ASSERT_EQ(std::dynamic_pointer_cast<TransferAsset>(tx6.commands[0])
+                    ->description,
+                "[Tx 6] Alice -> Bob");
+      ASSERT_EQ(tx6, tx_response);
+    }
 
-  {
-    std::vector<model::Transaction> tx_responses;
-    // When querying empty hash with id: Alice, limit: 2.
-    blocks
-        ->getAccountAssetsTransactionsWithPager(account1id, {asset1id},
-                                                iroha::hash256_t{}, 2)
-        .subscribe([](auto tx) { tx_responses.push_back(tx); });
-    // Then, returns 2 Top txs that meet asset operations related to Alice.
-    ASSERT_EQ(2, tx_responses.size());
-    ASSERT_EQ(tx6.description, "[Tx 6] Alice -> Bob");
-    ASSERT_EQ(tx6, tx_responses[0]);
-    ASSERT_EQ(tx5.description, "[Tx 5] Charlie -> Alice");
-    ASSERT_EQ(tx5, tx_responses[1]);
-  }
+    {
+      std::vector<Transaction> tx_responses;
+      // When querying empty hash with id: Alice, limit: 2.
+      blocks
+          ->getAccountAssetsTransactionsWithPager(user1id, {asset1id},
+                                                  iroha::hash256_t{}, 2)
+          .subscribe([&tx_responses](auto tx) { tx_responses.push_back(tx); });
+      // Then, returns 2 Top txs that meet asset operations related to Alice.
+      ASSERT_EQ(2, tx_responses.size());
+      ASSERT_EQ(std::dynamic_pointer_cast<TransferAsset>(tx6.commands[0])
+                    ->description,
+                "[Tx 6] Alice -> Bob");
+      ASSERT_EQ(tx6, tx_responses[0]);
+      ASSERT_EQ(std::dynamic_pointer_cast<TransferAsset>(tx5.commands[0])
+                    ->description,
+                "[Tx 5] Charlie -> Alice");
+      ASSERT_EQ(tx5, tx_responses[1]);
+    }
 
-  {
-    std::vector<model::Transaction> tx_responses;
-    // When querying empty hash with id: Alice, limit: 100 (over max acct asset
-    // txs).
-    blocks
-        ->getAccountAssetsTransactionsWithPager(account1id, {asset1id},
-                                                iroha::hash256_t{}, 100)
-        .subscribe([](auto tx) { tx_responses.push_back(tx); });
-    // Then, returns all txs that meet asset operations related to Alice.
-    ASSERT_EQ(4, tx_responses.size());
-    ASSERT_EQ(tx6.description, "[Tx 6] Alice -> Bob");
-    ASSERT_EQ(tx6, tx_responses[0]);
-    ASSERT_EQ(tx5.description, "[Tx 5] Charlie -> Alice");
-    ASSERT_EQ(tx5, tx_responses[1]);
-    ASSERT_EQ(tx3.description, "[Tx 3] Alice -> Bob");
-    ASSERT_EQ(tx3, tx_responses[2]);
-    ASSERT_EQ(std::dynamic_pointer_cast<AddAssetQuantity>(tx2.commnads[0]));
-    ASSERT_EQ(tx2, tx_responses[3]);
-  }
+    {
+      std::vector<Transaction> tx_responses;
+      // When querying empty hash with id: Alice, limit: 100 (over max acct
+      // asset txs).
+      blocks
+          ->getAccountAssetsTransactionsWithPager(user1id, {asset1id},
+                                                  iroha::hash256_t{}, 100)
+          .subscribe([&tx_responses](auto tx) { tx_responses.push_back(tx); });
+      // Then, returns all txs that meet asset operations related to Alice.
+      ASSERT_EQ(4, tx_responses.size());
+      ASSERT_EQ(std::dynamic_pointer_cast<TransferAsset>(tx6.commands[0])
+                    ->description,
+                "[Tx 6] Alice -> Bob");
+      ASSERT_EQ(tx6, tx_responses[0]);
+      ASSERT_EQ(std::dynamic_pointer_cast<TransferAsset>(tx5.commands[0])
+                    ->description,
+                "[Tx 5] Charlie -> Alice");
+      ASSERT_EQ(tx5, tx_responses[1]);
+      ASSERT_EQ(std::dynamic_pointer_cast<TransferAsset>(tx3.commands[0])
+                    ->description,
+                "[Tx 3] Alice -> Bob");
+      ASSERT_EQ(tx3, tx_responses[2]);
+      ASSERT_TRUE(std::dynamic_pointer_cast<AddAssetQuantity>(tx2.commands[0]));
+      ASSERT_EQ(tx2, tx_responses[3]);
+    }
 
-  {
-    bool passed = false;
-    // When querying top Transaction 5 hash with id: Alice, limit: 0.
-    blocks
-        ->getAccountAssetsTransactionsWithPager(account1id, {asset1id}, txh5, 0)
-        .subscribe([](auto tx) {
-          (void)tx;  // avoid from warning unused variable.
-          passed = true;
-        });
-    // Then returns null.
-    ASSERT_FALSE(passed);
-  }
+    {
+      bool passed = false;
+      // When querying top Transaction 6 hash with id: Alice, limit: 0.
+      blocks
+          ->getAccountAssetsTransactionsWithPager(user1id, {asset1id}, txh6, 0)
+          .subscribe([&passed](auto tx) {
+            (void)tx;  // avoid from warning unused variable.
+            passed = true;
+          });
+      // Then returns null.
+      ASSERT_FALSE(passed);
+    }
 
-  {
-    model::Transaction tx_response;
-    // When querying top Transaction 5 hash with id: Alice, limit: 1.
-    blocks
-        ->getAccountAssetsTransactionsWithPager(account1id, {asset1id}, txh4, 1)
-        .subscribe([](auto tx) { tx_response = tx; });
-    // Then returns the second Top most tx that meet Alice's irh@domain1 (txh4
-    // is excluded).
-    ASSERT_EQ(tx5, tx_response);
-  }
-  {
-    std::vector<model::Transaction> tx_responses;
-    // When querying top Transaction 5 hash with id: Alice, limit: 2.
-    blocks
-        ->getAccountAssetsTransactionsWithPager(account1id, {asset1id}, txh4,
-                                                100)
-        .subscribe([](auto tx) { tx_responses.push_back(tx); });
-    // Then returns all txs without a tx which txh4 has excluded, that are
-    // related to Alice's irh@domain1.
-    ASSERT_EQ(3, tx_responses.size());
-    ASSERT_EQ(tx5, tx_responses[0]);  // TransferAsset
-    ASSERT_EQ(tx3, tx_responses[1]);  // TrasnferAsset
-    ASSERT_EQ(tx2, tx_responses[2]);  // AddAssetQuantity
+    {
+      Transaction tx_response;
+      // When querying top Transaction 6 hash with id: Alice, limit: 1.
+      blocks
+          ->getAccountAssetsTransactionsWithPager(user1id, {asset1id}, txh6, 1)
+          .subscribe([&tx_response](auto tx) { tx_response = tx; });
+      // Then returns the second Top most tx that meet Alice's irh@domain1 (txh4
+      // is excluded).
+      ASSERT_EQ(tx5, tx_response);
+    }
+    {
+      std::vector<Transaction> tx_responses;
+      // When querying top Transaction 6 hash with id: Alice, limit: 100.
+      blocks
+          ->getAccountAssetsTransactionsWithPager(user1id, {asset1id}, txh6,
+                                                  100)
+          .subscribe([&tx_responses](auto tx) { tx_responses.push_back(tx); });
+      // Then returns all txs without a tx which txh6 has excluded, that are
+      // related to Alice's irh@domain1.
+      ASSERT_EQ(3, tx_responses.size());
+      ASSERT_EQ(tx5, tx_responses[0]);  // TransferAsset
+      ASSERT_EQ(tx3, tx_responses[1]);  // TrasnferAsset
+      ASSERT_EQ(tx2, tx_responses[2]);  // AddAssetQuantity
+    }
   }
 
   {
@@ -963,13 +967,15 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     Transaction tx1;
     tx1.creator_account_id = adminid;
     tx1.commands = {
-      // Given Transaction 2: includes AddAssetQuantity and TransferAsset
-      // with irrelevant commands.
-      std::make_shared<AddAssetQuantity>(asset1name, domain1name, 1000),
-      std::make_shared<AddAssetQuantity>(asset2name, domain2name, 1000),
-      std::make_shared<CreateAsset>("unfilteredasset", domain1name, 0),
-      std::make_shared<TransferAsset>(user1id, user2id, asset1id, Amount(200, 0))
-    };
+        // Given Transaction 2: includes AddAssetQuantity and TransferAsset
+        // with irrelevant commands.
+        std::make_shared<AddAssetQuantity>(asset1name, domain1name,
+                                           iroha::Amount(1000, 0)),
+        std::make_shared<AddAssetQuantity>(asset2name, domain2name,
+                                           iroha::Amount(1000, 0)),
+        std::make_shared<CreateAsset>("unfilteredasset", domain1name, 0),
+        std::make_shared<TransferAsset>(user1id, user2id, asset1id,
+                                        iroha::Amount(200, 0))};
     assign_dummy_tx_info(tx1);
     block.transactions.push_back(tx1);
 
@@ -981,16 +987,17 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
       return true;
     });
     storage->commit(std::move(ms));
-  }
 
-  {
-    // When query tx that has multiple assets from Top block.
-    Transaction tx_response;
-    blocks->getAccountAssetsTransactionWithPager(
-        account1id, {asset1name, asset2name}, iroha::hash256_t{}, 3)
-          .subscribe([](auto tx) { tx_response = tx; });
+    {
+      // When query tx that has multiple assets from Top block.
+      Transaction tx_response;
+      blocks
+          ->getAccountAssetsTransactionsWithPager(
+              user1id, {asset1name, asset2name}, iroha::hash256_t{}, 3)
+          .subscribe([&tx_response](auto tx) { tx_response = tx; });
 
-    // Then, returns the tx.
-    ASSERT_EQ(tx1, tx_response);
+      // Then, returns the tx.
+      ASSERT_EQ(tx1, tx_response);
+    }
   }
 }
