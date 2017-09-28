@@ -16,13 +16,15 @@
  */
 
 #include "ametsuchi/impl/flat_file_block_query.hpp"
+#include <model/commands/add_asset_quantity.hpp>
 
+#include "model/commands/add_asset_quantity.hpp"
 #include "model/commands/transfer_asset.hpp"
 #include "model/converters/json_common.hpp"
 
 namespace iroha {
   namespace ametsuchi {
-    FlatFileBlockQuery::FlatFileBlockQuery(FlatFile &block_store)
+    FlatFileBlockQuery::FlatFileBlockQuery(FlatFile& block_store)
         : block_store_(block_store) {}
 
     rxcpp::observable<model::Transaction>
@@ -37,9 +39,8 @@ namespace iroha {
     }
 
     rxcpp::observable<model::Transaction>
-    FlatFileBlockQuery::getAccountTransactionsWithPager(std::string account_id,
-                                                       iroha::hash256_t tx_hash,
-                                                       size_t limit) {
+    FlatFileBlockQuery::getAccountTransactionsWithPager(
+        std::string account_id, iroha::hash256_t tx_hash, size_t limit) {
       return getAccountTransactions(account_id)
           .take_while([&tx_hash](auto tx) { return tx.tx_hash != tx_hash; })
           .take_last(limit);  // TODO: size check
@@ -103,10 +104,10 @@ namespace iroha {
                 tx.commands.begin(), tx.commands.end(),
                 [account_id, asset_id](auto command) {
                   if (instanceof <model::TransferAsset>(*command)) {
-                    auto transferAsset = (model::TransferAsset *)command.get();
-                    return (transferAsset->src_account_id == account_id or
-                            transferAsset->dest_account_id == account_id) and
-                           transferAsset->asset_id == asset_id;
+                    auto transferAsset = (model::TransferAsset*)command.get();
+                    return (transferAsset->src_account_id == account_id
+                            or transferAsset->dest_account_id == account_id)
+                        and transferAsset->asset_id == asset_id;
                   }
                   return false;
                 });
@@ -115,15 +116,42 @@ namespace iroha {
 
     rxcpp::observable<model::Transaction>
     FlatFileBlockQuery::getAccountAssetsTransactionsWithPager(
-        std::string account_id, std::vector<std::string> assets_id, iroha::hash256_t tx_hash,
-        size_t limit) {
-      /*
-      return getAccountAssetTransactions(account_id, asset_id)
-          .take_while([&tx_hash](auto tx) { return tx.tx_hash != tx_hash; })
+        std::string account_id, std::vector<std::string> assets_id,
+        iroha::hash256_t tx_hash, size_t limit) {
+      auto asset_operations = [assets_id, account_id](auto const& tx) {
+        for (auto const& c : tx.commands) {
+          if (auto p =
+                  std::dynamic_pointer_cast<iroha::model::TransferAsset>(c)) {
+            if (std::find(assets_id.begin(), assets_id.end(), p->asset_id)
+                    != assets_id.end()
+                and (p->src_account_id == account_id
+                     or p->dest_account_id == account_id)) {
+              return true;
+            }
+          }
+          if (auto p =
+                  std::dynamic_pointer_cast<iroha::model::AddAssetQuantity>(
+                      c)) {
+            if (std::find(assets_id.begin(), assets_id.end(), p->asset_id)
+                    != assets_id.end()
+                and (p->account_id == account_id)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+      return getBlocksFrom(1)
+          .flat_map([](auto block) {
+            return rxcpp::observable<>::iterate(block.transactions);
+          })
+          .take_while(
+              [tx_hash](auto const& tx) { return tx.tx_hash != tx_hash; })
+          .filter([tx_hash, asset_operations](auto const& tx) {
+            return asset_operations(tx);
+          })
           .take_last(limit);  // TODO: size check
-          */
       // TODO: reverse
-      return rxcpp::observable<>::empty<model::Transaction>();
     }
   }  // namespace ametsuchi
 }  // namespace iroha
