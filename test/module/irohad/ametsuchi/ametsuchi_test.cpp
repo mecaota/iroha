@@ -673,7 +673,7 @@ TEST_F(AmetsuchiTest, AddSignatoryTest) {
   }
 }
 
-TEST_F(AmetsuchiTest, GetAccountAssetTransactionsWithPagerTest) {
+TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
   HashProviderImpl hashProvider;
 
   auto storage =

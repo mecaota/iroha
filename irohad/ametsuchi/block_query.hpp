@@ -70,10 +70,10 @@ namespace iroha {
        * @return observable of Model Transaction
        */
       virtual rxcpp::observable<model::Transaction>
-      getAccountAssetTransactionsWithPager(std::string account_id,
-                                           std::string asset_id,
-                                           iroha::hash256_t tx_hash,
-                                           size_t limit) = 0;
+      GetAccountAssetsTransactionsWithPager(std::string account_id,
+                                            std::vector<std::string> asset_id,
+                                            iroha::hash256_t tx_hash,
+                                            size_t limit) = 0;
 
       /**
        * Get given number of blocks starting with given height.

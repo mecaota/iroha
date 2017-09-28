@@ -114,13 +114,16 @@ namespace iroha {
     }
 
     rxcpp::observable<model::Transaction>
-    FlatFileBlockQuery::getAccountAssetTransactionsWithPager(
-        std::string account_id, std::string asset_id, iroha::hash256_t tx_hash,
+    FlatFileBlockQuery::GetAccountAssetsTransactionsWithPager(
+        std::string account_id, std::vector<std::string> assets_id, iroha::hash256_t tx_hash,
         size_t limit) {
+      /*
       return getAccountAssetTransactions(account_id, asset_id)
           .take_while([&tx_hash](auto tx) { return tx.tx_hash != tx_hash; })
           .take_last(limit);  // TODO: size check
+          */
       // TODO: reverse
+      return rxcpp::observable<>::from({});
     }
   }  // namespace ametsuchi
 }  // namespace iroha

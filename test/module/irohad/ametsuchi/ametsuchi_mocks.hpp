@@ -104,9 +104,9 @@ namespace iroha {
                    rxcpp::observable<model::Transaction>(std::string account_id,
                                                          iroha::hash256_t tx_hash,
                                                          size_t limit));
-      MOCK_METHOD4(getAccountAssetTransactionsWithPager,
+      MOCK_METHOD4(GetAccountAssetsTransactionsWithPager,
                    rxcpp::observable<model::Transaction>(std::string account_id,
-                                                         std::string asset_id,
+                                                         std::vector<std::string> assets_id,
                                                          iroha::hash256_t tx_hash,
                                                          size_t limit));
       MOCK_METHOD2(getBlocks,

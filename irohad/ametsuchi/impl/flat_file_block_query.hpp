@@ -46,10 +46,10 @@ namespace iroha {
           std::string account_id, std::string asset_id) override;
 
       rxcpp::observable<model::Transaction>
-      getAccountAssetTransactionsWithPager(std::string account_id,
-                                           std::string asset_id,
-                                           iroha::hash256_t tx_hash,
-                                           size_t limit) override;
+      GetAccountAssetsTransactionsWithPager(std::string account_id,
+                                            std::vector<std::string> asset_id,
+                                            iroha::hash256_t tx_hash,
+                                            size_t limit) override;
 
      private:
       FlatFile &block_store_;
