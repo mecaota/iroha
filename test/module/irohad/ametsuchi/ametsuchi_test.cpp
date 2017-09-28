@@ -681,6 +681,21 @@ void Output(Transaction tx) {
   //      hash256_t tx_hash;
   //      std::vector<std::shared_ptr<Command>> commands;
   std::cout << "tx: " << tx.creator_account_id << "\n";
+  std::cout << "commands:\n";
+  for (auto e : tx.commands) {
+    std::cout << (std::dynamic_pointer_cast<CreateDomain>(e)
+                      ? "CreateDomain"
+                      : std::dynamic_pointer_cast<CreateAccount>(e)
+                          ? "CreateAccount"
+                          : std::dynamic_pointer_cast<CreateAsset>(e)
+                              ? "CreateAsset"
+                              : std::dynamic_pointer_cast<AddAssetQuantity>(e)
+                                  ? "AddAssetQuantity"
+                                  : std::dynamic_pointer_cast<CreateAsset>(e)
+                                      ? "TransferAsset"
+                                      : "Else")
+              << "\n";
+  }
 }
 
 TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
@@ -778,7 +793,7 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
   const std::string asset2name = "moeka";
   const std::string asset2id = "moeka@domain2";
 
-  iroha::hash256_t txh1, txh2, txh3, txh4, txh5, txh6;
+  iroha::hash256_t txh6;
 
   {
     Block block;
@@ -790,7 +805,6 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
                     std::make_shared<CreateAsset>(asset2name, domain2name, 0)};
     assign_dummy_tx_info(tx1);
     block.transactions.push_back(tx1);
-    txh1 = hashProvider.get_hash(tx1);
 
     // Given Transaction 2: Admin applies AddAssetQuantity with Alice's
     // irh@domain1 and moeka@domain2 wallet.
@@ -802,7 +816,6 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
                                                        iroha::Amount(200, 0))};
     assign_dummy_tx_info(tx2);
     block.transactions.push_back(tx2);
-    txh2 = hashProvider.get_hash(tx2);
 
     // Given Transaction 3: Alice applies TransferAsset irh@domain1 from Alice
     // to Bob
@@ -813,7 +826,6 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
                                                     "[Tx 3] Alice -> Bob")};
     assign_dummy_tx_info(tx3);
     block.transactions.push_back(tx3);
-    txh3 = hashProvider.get_hash(tx3);
 
     // Given Transaction 4: Bob applies TransferAsset irh@domain1 from Bob to
     // Chalie
@@ -824,7 +836,6 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
                                                     "[Tx 4] Bob -> Charlie")};
     assign_dummy_tx_info(tx4);
     block.transactions.push_back(tx4);
-    txh4 = hashProvider.get_hash(tx4);
 
     // Given Transaction 5: Charlie applies TransferAsset irh@domain1 from
     // Chalie to Alice.
@@ -835,7 +846,6 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
                                                     "[Tx 5] Charlie -> Alice")};
     assign_dummy_tx_info(tx5);
     block.transactions.push_back(tx5);
-    txh5 = hashProvider.get_hash(tx5);
 
     // Given Transaction 6: Alice applies TransferAsset irh@domain1 from Alice
     // to Bob.
@@ -848,9 +858,11 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     block.transactions.push_back(tx6);
     txh6 = hashProvider.get_hash(tx6);
 
-    assign_dummy_block_info(block, iroha::hash256_t{});
+    blocks->getTopBlocks(1).subscribe([&](auto blk) {
+      assign_dummy_block_info(block, hashProvider.get_hash(blk));
+    });
 
-    // When storing block into MutableStorage
+    // When storing the block into MutableStorage
     auto ms = storage->createMutableStorage();
     ms->apply(block, [](const auto &blk, auto &query, const auto &top_hash) {
       return true;
@@ -880,7 +892,11 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
       blocks
           ->getAccountAssetsTransactionsWithPager(user1id, {asset1id},
                                                   iroha::hash256_t{}, 1)
-          .subscribe([&tx_response](auto tx) { std::cout << "ok\n";Output(tx); tx_response = tx; });
+          .subscribe([&tx_response](auto tx) {
+            std::cout << "ok\n";
+            Output(tx);
+            tx_response = tx;
+          });
       // Then, returns the Top tx that meets an asset operation related to
       // Alice.
       Output(tx6);
@@ -994,7 +1010,9 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     assign_dummy_tx_info(tx1);
     block.transactions.push_back(tx1);
 
-    assign_dummy_block_info(block, iroha::hash256_t{});
+    blocks->getTopBlocks(1).subscribe([&](auto blk) {
+      assign_dummy_block_info(block, hashProvider.get_hash(blk));
+    });
 
     // When storing block into MutableStorage
     auto ms = storage->createMutableStorage();
