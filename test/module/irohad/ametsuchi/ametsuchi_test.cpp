@@ -171,6 +171,121 @@ TEST_F(AmetsuchiTest, SampleTest) {
       [](auto tx) { EXPECT_EQ(tx.commands.size(), 1); });
 }
 
+TEST_F(AmetsuchiTest, TransferAssetToAmountZero) {
+  auto storage =
+      StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
+  ASSERT_TRUE(storage);
+  auto wsv = storage->getWsvQuery();
+  auto blocks = storage->getBlockQuery();
+
+  Transaction txn;
+  txn.creator_account_id = "admin1";
+  CreateDomain createDomain;
+  createDomain.domain_name = "ru";
+  txn.commands.push_back(std::make_shared<CreateDomain>(createDomain));
+  CreateAccount createAccount;
+  createAccount.account_name = "user1";
+  createAccount.domain_id = "ru";
+  txn.commands.push_back(std::make_shared<CreateAccount>(createAccount));
+
+  Block block;
+  block.transactions.push_back(txn);
+  block.height = 1;
+  block.prev_hash.fill(0);
+  auto block1hash = iroha::hash(block);
+  block.hash = block1hash;
+  block.txs_number = block.transactions.size();
+
+  {
+    auto ms = storage->createMutableStorage();
+    ms->apply(block, [](const auto &blk, auto &query, const auto &top_hash) {
+      return true;
+    });
+    storage->commit(std::move(ms));
+  }
+
+  {
+    auto account = wsv->getAccount(createAccount.account_name + "@" +
+                                       createAccount.domain_id);
+    ASSERT_TRUE(account);
+    ASSERT_EQ(account->account_id,
+              createAccount.account_name + "@" + createAccount.domain_id);
+    ASSERT_EQ(account->domain_name, createAccount.domain_id);
+  }
+
+  txn = Transaction();
+  txn.creator_account_id = "admin2";
+  createAccount = CreateAccount();
+  createAccount.account_name = "user2";
+  createAccount.domain_id = "ru";
+  txn.commands.push_back(std::make_shared<CreateAccount>(createAccount));
+  CreateAsset createAsset;
+  createAsset.domain_id = "ru";
+  createAsset.asset_name = "RUB";
+  createAsset.precision = 2;
+  txn.commands.push_back(std::make_shared<CreateAsset>(createAsset));
+  AddAssetQuantity addAssetQuantity;
+  addAssetQuantity.asset_id = "RUB#ru";
+  addAssetQuantity.account_id = "user1@ru";
+  iroha::Amount asset_amount(100, 2);
+  addAssetQuantity.amount = asset_amount;
+  txn.commands.push_back(std::make_shared<AddAssetQuantity>(addAssetQuantity));
+  TransferAsset transferAsset;
+  transferAsset.src_account_id = "user1@ru";
+  transferAsset.dest_account_id = "user2@ru";
+  transferAsset.asset_id = "RUB#ru";
+  transferAsset.description = "test transfer";
+  iroha::Amount transfer_amount(100, 2);
+  transferAsset.amount = transfer_amount;
+  txn.commands.push_back(std::make_shared<TransferAsset>(transferAsset));
+
+  block = Block();
+  block.transactions.push_back(txn);
+  block.height = 2;
+  block.prev_hash = block1hash;
+  auto block2hash = iroha::hash(block);
+  block.hash = block2hash;
+  block.txs_number = block.transactions.size();
+
+  {
+    auto ms = storage->createMutableStorage();
+    ms->apply(block, [](const auto &, auto &, const auto &) { return true; });
+    storage->commit(std::move(ms));
+  }
+
+  {
+    auto asset1 = wsv->getAccountAsset("user1@ru", "RUB#ru");
+    ASSERT_TRUE(asset1);
+    ASSERT_EQ(asset1->account_id, "user1@ru");
+    ASSERT_EQ(asset1->asset_id, "RUB#ru");
+    ASSERT_EQ(asset1->balance, iroha::Amount(0, 2));
+    auto asset2 = wsv->getAccountAsset("user2@ru", "RUB#ru");
+    ASSERT_TRUE(asset2);
+    ASSERT_EQ(asset2->account_id, "user2@ru");
+    ASSERT_EQ(asset2->asset_id, "RUB#ru");
+    ASSERT_EQ(asset2->balance, iroha::Amount(100, 2));
+  }
+
+  // Block store tests
+  blocks->getBlocks(1, 2).subscribe([block1hash, block2hash](auto eachBlock) {
+    if (eachBlock.height == 1) {
+      EXPECT_EQ(eachBlock.hash, block1hash);
+    } else if (eachBlock.height == 2) {
+      EXPECT_EQ(eachBlock.hash, block2hash);
+    }
+  });
+
+  blocks->getAccountTransactions("admin1").subscribe(
+      [](auto tx) { EXPECT_EQ(tx.commands.size(), 2); });
+  blocks->getAccountTransactions("admin2").subscribe(
+      [](auto tx) { EXPECT_EQ(tx.commands.size(), 4); });
+
+  blocks->getAccountAssetTransactions("user1@ru", "RUB#ru").subscribe(
+      [](auto tx) { EXPECT_EQ(tx.commands.size(), 1); });
+  blocks->getAccountAssetTransactions("user2@ru", "RUB#ru").subscribe(
+      [](auto tx) { EXPECT_EQ(tx.commands.size(), 1); });
+}
+
 TEST_F(AmetsuchiTest, PeerTest) {
   auto storage =
       StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
