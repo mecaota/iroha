@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 #include "ametsuchi/impl/storage_impl.hpp"
 #include "common/byteutils.hpp"
+#include "crypto/hash.hpp"
 #include "framework/test_subscriber.hpp"
 #include "model/commands/add_asset_quantity.hpp"
 #include "model/commands/add_peer.hpp"
@@ -28,7 +29,7 @@
 #include "model/commands/remove_signatory.hpp"
 #include "model/commands/set_quorum.hpp"
 #include "model/commands/transfer_asset.hpp"
-#include "model/model_hash_provider_impl.hpp"
+#include "model/converters/pb_block_factory.hpp"
 #include "module/irohad/ametsuchi/ametsuchi_fixture.hpp"
 
 using namespace iroha::ametsuchi;
@@ -56,8 +57,6 @@ TEST_F(AmetsuchiTest, GetBlocksCompletedWhenCalled) {
 }
 
 TEST_F(AmetsuchiTest, SampleTest) {
-  HashProviderImpl hashProvider;
-
   auto storage =
       StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
   ASSERT_TRUE(storage);
@@ -78,7 +77,7 @@ TEST_F(AmetsuchiTest, SampleTest) {
   block.transactions.push_back(txn);
   block.height = 1;
   block.prev_hash.fill(0);
-  auto block1hash = hashProvider.get_hash(block);
+  auto block1hash = iroha::hash(block);
   block.hash = block1hash;
   block.txs_number = block.transactions.size();
 
@@ -129,7 +128,7 @@ TEST_F(AmetsuchiTest, SampleTest) {
   block.transactions.push_back(txn);
   block.height = 2;
   block.prev_hash = block1hash;
-  auto block2hash = hashProvider.get_hash(block);
+  auto block2hash = iroha::hash(block);
   block.hash = block2hash;
   block.txs_number = block.transactions.size();
 
@@ -201,10 +200,7 @@ TEST_F(AmetsuchiTest, PeerTest) {
 }
 
 TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
-  HashProviderImpl hashProvider;
-
-  auto storage =
-      StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
+  auto storage = StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
   ASSERT_TRUE(storage);
   auto wsv = storage->getWsvQuery();
   auto blocks = storage->getBlockQuery();
@@ -265,7 +261,7 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
   block.transactions.push_back(txn);
   block.height = 1;
   block.prev_hash.fill(0);
-  auto block1hash = hashProvider.get_hash(block);
+  auto block1hash = iroha::hash(block);
   block.hash = block1hash;
   block.txs_number = static_cast<uint16_t>(block.transactions.size());
 
@@ -315,7 +311,7 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
   block.transactions.push_back(txn);
   block.height = 2;
   block.prev_hash = block1hash;
-  auto block2hash = hashProvider.get_hash(block);
+  auto block2hash = iroha::hash(block);
   block.hash = block2hash;
   block.txs_number = static_cast<uint16_t>(block.transactions.size());
 
@@ -360,7 +356,7 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
   block.transactions.push_back(txn);
   block.height = 3;
   block.prev_hash = block2hash;
-  auto block3hash = hashProvider.get_hash(block);
+  auto block3hash = iroha::hash(block);
   block.hash = block3hash;
   block.txs_number = static_cast<uint16_t>(block.transactions.size());
 
@@ -433,14 +429,11 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
 }
 
 TEST_F(AmetsuchiTest, AddSignatoryTest) {
-  HashProviderImpl hashProvider;
-
-  auto storage =
-      StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
+  auto storage = StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
   ASSERT_TRUE(storage);
   auto wsv = storage->getWsvQuery();
 
-  iroha::ed25519::pubkey_t pubkey1, pubkey2;
+  iroha::pubkey_t pubkey1, pubkey2;
   pubkey1.at(0) = 1;
   pubkey2.at(0) = 2;
 
@@ -463,7 +456,7 @@ TEST_F(AmetsuchiTest, AddSignatoryTest) {
   block.transactions.push_back(txn);
   block.height = 1;
   block.prev_hash.fill(0);
-  auto block1hash = hashProvider.get_hash(block);
+  auto block1hash = iroha::hash(block);
   block.hash = block1hash;
   block.txs_number = block.transactions.size();
 
@@ -499,7 +492,7 @@ TEST_F(AmetsuchiTest, AddSignatoryTest) {
   block.transactions.push_back(txn);
   block.height = 2;
   block.prev_hash = block1hash;
-  auto block2hash = hashProvider.get_hash(block);
+  auto block2hash = iroha::hash(block);
   block.hash = block2hash;
   block.txs_number = block.transactions.size();
 
@@ -533,7 +526,7 @@ TEST_F(AmetsuchiTest, AddSignatoryTest) {
   block.transactions.push_back(txn);
   block.height = 3;
   block.prev_hash = block2hash;
-  auto block3hash = hashProvider.get_hash(block);
+  auto block3hash = iroha::hash(block);
   block.hash = block3hash;
   block.txs_number = block.transactions.size();
 
@@ -574,7 +567,7 @@ TEST_F(AmetsuchiTest, AddSignatoryTest) {
   block.transactions.push_back(txn);
   block.height = 4;
   block.prev_hash = block3hash;
-  auto block4hash = hashProvider.get_hash(block);
+  auto block4hash = iroha::hash(block);
   block.hash = block4hash;
   block.txs_number = block.transactions.size();
 
@@ -617,7 +610,7 @@ TEST_F(AmetsuchiTest, AddSignatoryTest) {
   block.transactions.push_back(txn);
   block.height = 5;
   block.prev_hash = block4hash;
-  auto block5hash = hashProvider.get_hash(block);
+  auto block5hash = iroha::hash(block);
   block.hash = block5hash;
   block.txs_number = block.transactions.size();
 
@@ -652,7 +645,7 @@ TEST_F(AmetsuchiTest, AddSignatoryTest) {
   block.transactions.push_back(txn);
   block.height = 6;
   block.prev_hash = block5hash;
-  auto block6hash = hashProvider.get_hash(block);
+  auto block6hash = iroha::hash(block);
   block.hash = block6hash;
   block.txs_number = block.transactions.size();
 
@@ -672,35 +665,22 @@ TEST_F(AmetsuchiTest, AddSignatoryTest) {
 }
 
 void Output(Transaction tx) {
-  //      std::vector<Signature> signatures;
-  //      ts64_t created_ts;
-  //      std::string creator_account_id;
-  //      uint64_t tx_counter;
-  //      hash256_t tx_hash;
-  //      std::vector<std::shared_ptr<Command>> commands;
   std::cout << "tx: " << tx.creator_account_id << "\n";
   std::cout << "commands:\n";
   for (auto e : tx.commands) {
     std::cout << (std::dynamic_pointer_cast<CreateDomain>(e)
-                      ? "CreateDomain"
-                      : std::dynamic_pointer_cast<CreateAccount>(e)
-                          ? "CreateAccount"
-                          : std::dynamic_pointer_cast<CreateAsset>(e)
-                              ? "CreateAsset"
-                              : std::dynamic_pointer_cast<AddAssetQuantity>(e)
-                                  ? "AddAssetQuantity"
-                                  : std::dynamic_pointer_cast<TransferAsset>(e)
-                                      ? "TransferAsset"
-                                      : "Else")
+                      ? "CreateDomain"      : std::dynamic_pointer_cast<CreateAccount>(e)
+                      ? "CreateAccount"     : std::dynamic_pointer_cast<CreateAsset>(e)
+                      ? "CreateAsset"       : std::dynamic_pointer_cast<AddAssetQuantity>(e)
+                      ? "AddAssetQuantity"  : std::dynamic_pointer_cast<TransferAsset>(e)
+                      ? "TransferAsset"
+                      : "Else")
               << "\n";
   }
 }
 
 TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
-  HashProviderImpl hashProvider;
-
-  auto storage =
-      StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
+  auto storage = StorageImpl::create(block_store_path, redishost_, redisport_, pgopt_);
   ASSERT_TRUE(storage);
   auto wsv = storage->getWsvQuery();
   auto blocks = storage->getBlockQuery();
@@ -744,7 +724,7 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
   block1.created_ts = 0;
   block1.txs_number = static_cast<uint16_t>(block1.transactions.size());
   block1.prev_hash.fill(0);
-  block1.hash = hashProvider.get_hash(block1);
+  block1.hash = iroha::hash(block1);
 
   // When storing block into MutableStorage
   {
@@ -791,7 +771,7 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
   block2.created_ts = 1;
   block2.txs_number = static_cast<uint16_t>(block2.transactions.size());
   block2.prev_hash = block1.hash;
-  block2.hash = hashProvider.get_hash(block2);
+  block2.hash = iroha::hash(block2);
 
   // When storing the block into MutableStorage
   {
@@ -831,7 +811,7 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
   block3.created_ts = 1;
   block3.txs_number = static_cast<uint16_t>(block3.transactions.size());
   block3.prev_hash = block2.hash;
-  block3.hash = hashProvider.get_hash(block3);
+  block3.hash = iroha::hash(block3);
 
   // When storing the block into MutableStorage
   {
@@ -928,7 +908,7 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     // When querying top Transaction 6 hash with id: Alice, limit: 0.
     blocks
         ->getAccountAssetsTransactionsWithPager(user1id, {asset1id},
-                                                hashProvider.get_hash(tx5), 0)
+                                                iroha::hash(tx5), 0)
         .subscribe([&passed](auto tx) {
           (void)tx;  // avoid from warning unused variable.
           passed = true;
@@ -942,7 +922,7 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     // When querying top Transaction 6 hash with id: Alice, limit: 1.
     blocks
         ->getAccountAssetsTransactionsWithPager(user1id, {asset1id},
-                                                hashProvider.get_hash(tx5), 1)
+                                                iroha::hash(tx5), 1)
         .subscribe([&tx_response](auto tx) { tx_response = tx; });
     // Then returns the second Top most tx that meet Alice's irh@domain1 (txh4
     // is excluded).
@@ -953,7 +933,7 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     // When querying top Transaction 6 hash with id: Alice, limit: 100.
     blocks
         ->getAccountAssetsTransactionsWithPager(user1id, {asset1id},
-                                                hashProvider.get_hash(tx5), 100)
+                                                iroha::hash(tx5), 100)
         .subscribe([&tx_responses](auto tx) { tx_responses.push_back(tx); });
     // Then returns all txs without a tx which txh5 has excluded, that are
     // related to Alice's irh@domain1.
@@ -984,7 +964,7 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
   block4.created_ts = 1;
   block4.txs_number = static_cast<uint16_t>(block4.transactions.size());
   block4.prev_hash = block3.hash;
-  block4.hash = hashProvider.get_hash(block4);
+  block4.hash = iroha::hash(block4);
 
   // When storing block into MutableStorage
   auto ms = storage->createMutableStorage();
