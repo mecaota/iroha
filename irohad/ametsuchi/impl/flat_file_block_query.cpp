@@ -16,11 +16,10 @@
  */
 
 #include "ametsuchi/impl/flat_file_block_query.hpp"
-#include <model/commands/add_asset_quantity.hpp>
-
 #include "model/commands/add_asset_quantity.hpp"
 #include "model/commands/transfer_asset.hpp"
 #include "model/converters/json_common.hpp"
+#include "crypto/hash.hpp"
 
 namespace iroha {
   namespace ametsuchi {
@@ -42,7 +41,7 @@ namespace iroha {
     FlatFileBlockQuery::getAccountTransactionsWithPager(
         std::string account_id, iroha::hash256_t tx_hash, size_t limit) {
       return getAccountTransactions(account_id)
-          .take_while([&tx_hash](auto tx) { return tx.tx_hash != tx_hash; })
+          .take_while([&tx_hash](auto tx) { return iroha::hash(tx) != tx_hash; })
           .take_last(limit);  // TODO: size check
       // TODO: reverse
     }
@@ -145,7 +144,7 @@ namespace iroha {
             return rxcpp::observable<>::iterate(block.transactions);
           });
 //          .take_while([tx_hash](auto const& tx) {
-//            return tx.tx_hash != tx_hash;
+//            return iroha::hash(tx) != tx_hash;
 //          })  // if no matching with tx_hash(e.g. empty), nothing to be
               // filtered.
         /*
