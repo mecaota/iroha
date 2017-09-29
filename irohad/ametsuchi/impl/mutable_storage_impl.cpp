@@ -19,6 +19,11 @@
 
 #include "ametsuchi/impl/postgres_wsv_query.hpp"
 #include "ametsuchi/impl/postgres_wsv_command.hpp"
+#include "model/commands/create_account.hpp"
+#include "model/commands/create_asset.hpp"
+#include "model/commands/create_domain.hpp"
+#include "model/commands/add_asset_quantity.hpp"
+#include "model/commands/transfer_asset.hpp"
 
 namespace iroha {
   namespace ametsuchi {
@@ -58,9 +63,30 @@ namespace iroha {
                       block.transactions.end(), execute_transaction);
 
       if (result) {
+        std::cout << "-------------- okkkkk --------------\n";
+        for (auto tx: block.transactions) {
+          for (auto e: tx.commands) {
+            std::cout << (std::dynamic_pointer_cast<iroha::model::CreateDomain>(e)
+                          ? "CreateDomain"
+                          : std::dynamic_pointer_cast<iroha::model::CreateAccount>(e)
+                            ? "CreateAccount"
+                            : std::dynamic_pointer_cast<iroha::model::CreateAsset>(e)
+                              ? "CreateAsset"
+                              : std::dynamic_pointer_cast<iroha::model::AddAssetQuantity>(e)
+                                ? "AddAssetQuantity"
+                                : std::dynamic_pointer_cast<iroha::model::TransferAsset>(e)
+                                  ? "TransferAsset"
+                                  : "Else") << "\n";
+            std::cout << "-------------------------------------\n";
+          }
+        }
         block_store_.insert(std::make_pair(block.height, block));
         top_hash_ = block.hash;
         transaction_->exec("RELEASE SAVEPOINT savepoint_;");
+        pqxx::result R(transaction_->exec("SELECT * FROM asset;"));
+        for (auto c = R.begin(); c != R.end(); ++c) {
+          std::cout << c[0].as(std::string()) << "\t" << c[1].as(std::string()) << std::endl;
+        }
       } else {
         transaction_->exec("ROLLBACK TO SAVEPOINT savepoint_;");
       }
