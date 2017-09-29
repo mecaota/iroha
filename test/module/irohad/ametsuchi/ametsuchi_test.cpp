@@ -271,7 +271,7 @@ TEST_F(AmetsuchiTest, queryGetAccountAssetTransactionsTest) {
 
   {
     auto ms = storage->createMutableStorage();
-    ms->apply(block, [](const auto &blk, auto &query, const auto &top_hash) {
+    ms->apply(block, [](const auto &, auto &, const auto &) {
       return true;
     });
     storage->commit(std::move(ms));
@@ -726,16 +726,6 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     txn.tx_hash = hashProvider.get_hash(txn);
   };
 
-  auto assign_dummy_block_info = [&hashProvider](Block &block,
-                                                 iroha::hash256_t prev_hash) {
-    block.created_ts = 0;
-    block.height = 1;
-    block.prev_hash.fill(0);
-    block.merkle_root.fill(0);
-    block.txs_number = static_cast<uint16_t>(block.transactions.size());
-    hashProvider.get_hash(block);
-  };
-
   {  //////////////////////////////////////////////////////////////////////////////////
     Block block;
     {
@@ -760,7 +750,6 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
       assign_dummy_tx_info(txn);
       block.transactions.push_back(txn);
     }
-    assign_dummy_block_info(block, iroha::hash256_t{});
 
     // When storing block into MutableStorage
     auto ms = storage->createMutableStorage();
@@ -788,10 +777,12 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
   ASSERT_STREQ((user3name + "@" + domain1name).c_str(),
                account3->account_id.c_str());
 
-  const std::string asset1name = "irh";
-  const std::string asset1id = "irh@domain1";
-  const std::string asset2name = "moeka";
-  const std::string asset2id = "moeka@domain2";
+  const auto asset1name = std::string("irh");
+  const auto asset1id = std::string("irh@domain1");
+  const auto asset1precision = 0;
+  const auto asset2name = std::string("moeka");
+  const auto asset2id = std::string("moeka@domain2");
+  const auto asset2precision = 1;
 
   iroha::hash256_t txh6;
 
@@ -801,8 +792,8 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     // moeka@domain2
     Transaction tx1;
     tx1.creator_account_id = adminid;
-    tx1.commands = {std::make_shared<CreateAsset>(asset1name, domain1name, 2),
-                    std::make_shared<CreateAsset>(asset2name, domain2name, 0)};
+    tx1.commands = {std::make_shared<CreateAsset>(asset1name, domain1name, asset1precision),
+                    std::make_shared<CreateAsset>(asset2name, domain2name, asset2precision)};
     assign_dummy_tx_info(tx1);
     block.transactions.push_back(tx1);
 
@@ -810,10 +801,10 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     // irh@domain1 and moeka@domain2 wallet.
     Transaction tx2;
     tx2.creator_account_id = adminid;
-    tx2.commands = {std::make_shared<AddAssetQuantity>(user1name, asset1id,
-                                                       iroha::Amount(200, 0)),
-                    std::make_shared<AddAssetQuantity>(user2name, asset2id,
-                                                       iroha::Amount(200, 0))};
+    tx2.commands = {std::make_shared<AddAssetQuantity>(user1id, asset1id,
+                                                       iroha::Amount(200, asset1precision)),
+                    std::make_shared<AddAssetQuantity>(user2id, asset2id,
+                                                       iroha::Amount(200, asset2precision))};
     assign_dummy_tx_info(tx2);
     block.transactions.push_back(tx2);
 
@@ -822,7 +813,7 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     Transaction tx3;
     tx3.creator_account_id = user1id;
     tx3.commands = {std::make_shared<TransferAsset>(user1id, user2id, asset1id,
-                                                    iroha::Amount(200, 0),
+                                                    iroha::Amount(200, asset1precision),
                                                     "[Tx 3] Alice -> Bob")};
     assign_dummy_tx_info(tx3);
     block.transactions.push_back(tx3);
@@ -832,7 +823,7 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     Transaction tx4;
     tx4.creator_account_id = user2id;
     tx4.commands = {std::make_shared<TransferAsset>(user2id, user3id, asset1id,
-                                                    iroha::Amount(150, 0),
+                                                    iroha::Amount(150, asset1precision),
                                                     "[Tx 4] Bob -> Charlie")};
     assign_dummy_tx_info(tx4);
     block.transactions.push_back(tx4);
@@ -842,7 +833,7 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     Transaction tx5;
     tx5.creator_account_id = user3id;
     tx5.commands = {std::make_shared<TransferAsset>(user3id, user1id, asset1id,
-                                                    iroha::Amount(100, 0),
+                                                    iroha::Amount(100, asset1precision),
                                                     "[Tx 5] Charlie -> Alice")};
     assign_dummy_tx_info(tx5);
     block.transactions.push_back(tx5);
@@ -852,19 +843,15 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
     Transaction tx6;
     tx6.creator_account_id = user3id;
     tx6.commands = {std::make_shared<TransferAsset>(user3id, user1id, asset1id,
-                                                    iroha::Amount(50, 0),
+                                                    iroha::Amount(50, asset1precision),
                                                     "[Tx 6] Alice -> Bob")};
     assign_dummy_tx_info(tx6);
     block.transactions.push_back(tx6);
     txh6 = hashProvider.get_hash(tx6);
 
-    blocks->getTopBlocks(1).subscribe([&](auto blk) {
-      assign_dummy_block_info(block, hashProvider.get_hash(blk));
-    });
-
     // When storing the block into MutableStorage
     auto ms = storage->createMutableStorage();
-    ms->apply(block, [](const auto &blk, auto &query, const auto &top_hash) {
+    ms->apply(block, [](const auto &, auto &, const auto &) {
       return true;
     });
     storage->commit(std::move(ms));
@@ -893,7 +880,7 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
           ->getAccountAssetsTransactionsWithPager(user1id, {asset1id},
                                                   iroha::hash256_t{}, 1)
           .subscribe([&tx_response](auto tx) {
-            std::cout << "ok\n";
+            std::cout << "----------- ok ------------\n";
             Output(tx);
             tx_response = tx;
           });
@@ -1001,18 +988,14 @@ TEST_F(AmetsuchiTest, GetAccountAssetsTransactionsWithPagerTest) {
         // Given Transaction 2: includes AddAssetQuantity and TransferAsset
         // with irrelevant commands.
         std::make_shared<AddAssetQuantity>(asset1name, domain1name,
-                                           iroha::Amount(1000, 0)),
+                                           iroha::Amount(1000, asset1precision)),
         std::make_shared<AddAssetQuantity>(asset2name, domain2name,
-                                           iroha::Amount(1000, 0)),
-        std::make_shared<CreateAsset>("unfilteredasset", domain1name, 0),
+                                           iroha::Amount(1000, asset2precision)),
+        std::make_shared<CreateAsset>("unfilteredasset", domain1name, 5),
         std::make_shared<TransferAsset>(user1id, user2id, asset1id,
-                                        iroha::Amount(200, 0))};
+                                        iroha::Amount(200, asset1precision))};
     assign_dummy_tx_info(tx1);
     block.transactions.push_back(tx1);
-
-    blocks->getTopBlocks(1).subscribe([&](auto blk) {
-      assign_dummy_block_info(block, hashProvider.get_hash(blk));
-    });
 
     // When storing block into MutableStorage
     auto ms = storage->createMutableStorage();
